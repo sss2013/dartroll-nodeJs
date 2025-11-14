@@ -1,4 +1,3 @@
-const express = require('express');
 const redis = require('redis');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -35,11 +34,11 @@ async function quitRedis() {
     }
 }
 
-client.connect().then();
-const redisCli = client.v4;
+redisClient.connect().then();
+const redisCli = redisClient.v4;
 
 module.exports = {
-    client,
+    redisClient,
     connectRedis,
     quitRedis
 };
