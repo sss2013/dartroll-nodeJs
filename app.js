@@ -1,41 +1,43 @@
-require('dotenv').config();
-
-const dayjs = require('dayjs');
 const express = require('express');
-const http = require('http');
-const cors = require('cors');
-const axios = require('axios');
-const xml2js = require('xml2js');
-const authRouter = require('./src/api/auth/authController');
-const bodyParser = require('body-parser');
-const redis = require('redis');
-const { channel } = require('diagnostics_channel');
 const app = express();
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const eventKey = process.env.API_KEY;
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+const cors = require('cors');
+const authRouter = require('./src/api/auth/authController');
+const eventRouter = require('./src/api/event/eventRouter');
+const { client: redisClient, connectRedis, quitRedis } = require('./src/config/redisClient');
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(authRouter);
+app.use(eventRouter);
 
-// app.use(cors());
+async function startServer() {
+    try {
+        await connectRedis();
+        const PORT = process.env.PORT || 3000;
+        const server = app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
 
-const redisClient = redis.createClient({
-    url: 'redis://localhost:6379'
-});
+        const shutdown = async () => {
+            console.log('Shutting down server...');
+            server.close(async () => {
+                await quitRedis();
+                process.exit(0);
+            });
 
-redisClient.connect().then(() => {
-    console.log("Connected to Redis");
-}).catch((err) => {
-    console.error("Redis connection error:", err);
-});
+            setTimeout(() => {
+                console.warn('Forcing shutdown...');
+                process.exit(1);
+            }, 10000);
+        };
 
-app.get('/', (req, res) => {
-    console.log("Received a request at /");
-});
-
-const PORT = process.env.PORT || 8000; // .env 파일에 PORT가 없으면 8000번 사용
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+        process.on('SIGINT', shutdown);
+        process.on('SIGTERM', shutdown);
+    } catch (error) {
+        console.error('Error starting server:', error);
+        process.exit(1);
+    }
+}
+startServer();
