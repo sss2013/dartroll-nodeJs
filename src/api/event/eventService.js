@@ -1,7 +1,7 @@
 const axios = require('axios');
 const xml2js = require('xml2js');
 const parser = new xml2js.Parser({ explicitArray: false });
-const { client: redisClient } = require('../../config/redisClient');
+const { redisClient } = require('../../config/redisClient');
 const { parse } = require('dotenv');
 const eventKey = process.env.API_KEY;
 

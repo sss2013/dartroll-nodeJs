@@ -34,9 +34,9 @@ async function quitRedis() {
     }
 }
 
-redisClient.connect().then();
-const redisCli = redisClient.v4;
-
+redisClient.connect().catch(err => console.error('Redis connect error', err));
+// 불필요한 .v4 사용 제거 — client(=redisClient)를 직접 사용하세요
+const redisCli = redisClient;
 module.exports = {
     redisClient,
     connectRedis,
