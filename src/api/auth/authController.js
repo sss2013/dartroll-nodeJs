@@ -1,12 +1,7 @@
-require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = require('../../config/supaClient');
 
 router.get('/config', (req, res) => {
     res.json({
@@ -16,6 +11,8 @@ router.get('/config', (req, res) => {
         NAVER_CLIENT_SECRET: process.env.NAVER_CLIENT_SECRET
     })
 })
+
+
 
 async function handleSignUp(token, provider, url, res) {
     try {

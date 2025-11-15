@@ -5,6 +5,52 @@ const { redisClient } = require('../../config/redisClient');
 const { parse } = require('dotenv');
 const eventKey = process.env.API_KEY;
 
+function filterItemArea(area) {
+    if (area === "" || area == null) {
+        return "EMPTY";
+    }
+    switch (area) {
+        case "전라남도":
+            return "전남";
+        case "전라북도":
+            return "전북";
+        case "경기도":
+            return "경기";
+        case "전북특별자치도":
+            return "전북";
+        case "서울특별시":
+            return "서울";
+        case "강원특별자치도":
+            return "강원";
+        case "제주특별자치도":
+            return "제주";
+        case "충청남도":
+            return "충남";
+        case "충청북도":
+            return "충북";
+        case "경상남도":
+            return "경남";
+        case "경상북도":
+            return "경북";
+        case "대전광역시":
+            return "대전";
+        case "광주광역시":
+            return "광주";
+        case "부산광역시":
+            return "부산";
+        case "인천광역시":
+            return "인천";
+        case "대구광역시":
+            return "대구";
+        case "울산광역시":
+            return "울산";
+        case "세종특별자치시":
+            return "세종";
+        default:
+            return area;
+    }
+}
+
 async function callItems(serviceTp, firstPages, totalPages) {
     try {
         let prefix;
@@ -66,6 +112,8 @@ async function callItemsDetail(idxName, contentId) {
         const item = result?.response?.body?.items?.item;
 
         await saveItemDetailToRedis(idxName, item, contentId);
+
+        return { message: 'Detail saved' };
     } catch (error) {
         console.error('Error fetching item detail:', error);
     }
@@ -75,17 +123,7 @@ async function saveItemDetailToRedis(idxName, item, key) {
     try {
         const hashKey = `${idxName}:detail:${key}`;
 
-        if (item.area === "" || item.area == null) {
-            item.area = "EMPTY";
-        }
-
-        if (item.area === "전북특별자치도") {
-            item.area = "전북";
-        }
-
-        if (item.area === "전라남도") {
-            item.area = "전남";
-        }
+        item.area = filterItemArea(item.area);
 
         await redisClient.hSet(hashKey, {
             title: item.title,
@@ -112,31 +150,8 @@ async function saveItemDetailToRedis(idxName, item, key) {
 async function saveItemsToRedis(items, prefix) {
     try {
         for (let i = 0; i < items.length; i++) {
-            if (items[i].area === "" || items[i].area == null) {
-                items[i].area = "EMPTY";
-            }
 
-            switch (items[i].area) {
-                case "전북특별자치도":
-                    items[i].area = "전북";
-                    break;
-                case "전라남도":
-                    items[i].area = "전남";
-                    break;
-                case "서울특별시":
-                    items[i].area = "서울";
-                    break;
-                case "제주특별자치도":
-                    items[i].area = "제주";
-                    break;
-                case "충청남도":
-                    items[i].area = "충남";
-                    break;
-                case "충청북도":
-                    items[i].area = "충북";
-                    break;
-
-            }
+            const area = filterItemArea(items[i].area);
 
             const hashKey = `${prefix}:${items[i].seq}`;
             await redisClient.hSet(hashKey, {
@@ -146,7 +161,7 @@ async function saveItemsToRedis(items, prefix) {
                 endDate: items[i].endDate,
                 place: items[i].place,
                 sigungu: items[i].sigungu,
-                area: items[i].area,
+                area: area,
                 thumbnail: items[i].thumbnail,
             });
 
@@ -166,18 +181,12 @@ async function getItemsDetail(idxName, contentId) {
     }
 };
 
-async function getItemsByArea(idxName, area, maxCap = 100) {
+async function getItemsByArea(idxName, area, maxCap = 10) {
     try {
         const tagQuery = `@area:{${area}}`;
         const indexName = `idx:${idxName}`;
 
-        const countCmd = ['FT.SEARCH', indexName, tagQuery, 'DIALECT', '2', 'LIMIT', '0', '0'];
-        const countRaw = await redisClient.sendCommand(countCmd);
-        const total = Number(countRaw[0]) || 0;
-        if (total === 0) return { total: 0, results: [] };
-
         const returnFields = ['area', 'startDate', 'endDate', 'title', 'place', 'thumbnail', 'sigungu', 'genre'];
-        const fetchCount = Math.min(total, maxCap);
         const returnArgs = returnFields.length ? ['RETURN', String(returnFields.length), ...returnFields] : [];
 
         const cmd = [
@@ -187,7 +196,7 @@ async function getItemsByArea(idxName, area, maxCap = 100) {
             'DIALECT',
             '2',
             ...returnArgs,
-            'LIMIT', '0', String(fetchCount)
+            'LIMIT', '0', String(maxCap)
         ];
 
         const raw = await redisClient.sendCommand(cmd);
