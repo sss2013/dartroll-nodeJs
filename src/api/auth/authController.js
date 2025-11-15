@@ -20,6 +20,8 @@ router.post('/api/auth/kakaoSignIn', async (req, res) => {
 
     // const result =
     //     await handleSignUp(accessToken, refreshToken, accessExpires, refreshExpires, userId, provider, res);
+
+    res.status(200).json({ message: 'Kakao login successful' });
     console.log(provider);
     console.log(accessToken);
     console.log(refreshToken);
