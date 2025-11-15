@@ -1,8 +1,9 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
-const supabase = require('../../config/supaClient');
 
+
+//앱에서 필요한 환경변수 전달
 router.get('/config', (req, res) => {
     res.json({
         KAKAO_NATIVE_APP_KEY: process.env.KAKAO_NATIVE_APP_KEY,
@@ -12,46 +13,19 @@ router.get('/config', (req, res) => {
     })
 })
 
+router.post('/api/auth/kakaoSignIn', async (req, res) => {
+    const { provider, accessToken, refreshToken, accessExpires, refreshExpires } = req.body;
 
+    if (!accessToken) return res.status(400).json({ error: 'missing Access Token' });
 
-async function handleSignUp(token, provider, url, res) {
-    try {
-        const apiRes = await axios.get(url, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (provider == 'naver' && apiRes.data.resultcode !== '00') {
-            return res.status(401).json({ error: '로그인 인증 실패' });
-        }
-        let userId;
-        if (provider == 'kakao') {
-            userId = apiRes.data.id;
-        } else {
-            userId = apiRes.data.response.id;
-        }
-        const { error } = await supabase
-            .from('users')
-            .upsert([{ user_id: userId, provider: provider }], { onConflict: ['user_id'] })
-        if (error) {
-            console.error(error);
-            return res.status(500).json({ error: error.message });
-        }
-        res.json({ success: true });
-    } catch (error) {
-        console.error('로그인 인증 오류:', error);
-        res.status(500).json({ error: '로그인 인증 실패' });
-    }
-}
-
-router.post('/api/auth/signUp', async (req, res) => {
-    const provider = req.body.provider;
-    const token = req.body.token;
-
-    if (provider === 'kakao') {
-        return await handleSignUp(token, 'kakao', 'https://kapi.kakao.com/v2/user/me', res);
-    } else {
-        return await handleSignUp(token, 'naver', 'https://openapi.naver.com/v1/nid/me', res);
-    }
+    // const result =
+    //     await handleSignUp(accessToken, refreshToken, accessExpires, refreshExpires, userId, provider, res);
+    console.log(provider);
+    console.log(accessToken);
+    console.log(refreshToken);
+    console.log(accessExpires);
+    console.log(refreshExpires);
 });
+
 
 module.exports = router;
