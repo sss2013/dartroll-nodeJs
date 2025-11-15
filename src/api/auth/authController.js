@@ -14,7 +14,7 @@ router.get('/config', (req, res) => {
 })
 
 router.post('/api/auth/kakaoSignIn', async (req, res) => {
-    const { provider, accessToken, refreshToken, accessExpires, refreshExpires } = req.body;
+    const { provider, accessToken, refreshToken, accessExpiresAt, refreshExpiresAt } = req.body;
 
     if (!accessToken) return res.status(400).json({ error: 'missing Access Token' });
 
@@ -25,8 +25,8 @@ router.post('/api/auth/kakaoSignIn', async (req, res) => {
     console.log(provider);
     console.log(accessToken);
     console.log(refreshToken);
-    console.log(accessExpires);
-    console.log(refreshExpires);
+    console.log(accessExpiresAt);
+    console.log(refreshExpiresAt);
 });
 
 
