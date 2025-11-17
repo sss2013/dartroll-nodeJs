@@ -6,6 +6,9 @@ dotenv.config();
 const cors = require('cors');
 const authRouter = require('./src/api/auth/authController');
 const eventRouter = require('./src/api/event/eventRouter');
+const postRouter = require('./src/api/posts/postRouter');
+
+const { connectMongo } = require('./src/config/mongoClient');
 const { client: redisClient, connectRedis, quitRedis } = require('./src/config/redisClient');
 
 app.use(cors());
@@ -21,6 +24,9 @@ async function startServer() {
         const server = app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });
+
+        await connectMongo();
+        app.use(postRouter);
 
         const shutdown = async () => {
             console.log('Shutting down server...');

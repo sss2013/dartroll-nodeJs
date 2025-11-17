@@ -5,6 +5,38 @@ const { redisClient } = require('../../config/redisClient');
 const { parse } = require('dotenv');
 const eventKey = process.env.API_KEY;
 
+const detailMapper = (it) => ({
+    title: it.title,
+    div: 'detail',
+    startDate: it.startDate,
+    endDate: it.endDate,
+    place: it.place,
+    sigungu: it.sigungu,
+    area: it.area,
+    url: it.url,
+    imgUrl: it.imgUrl,
+    placeAddr: it.placeAddr,
+    placeUrl: it.placeUrl,
+    gpsX: it.gpsX,
+    gpsY: it.gpsY,
+    price: it.price,
+    genre: it.realmName,
+    phone: it.phone,
+})
+
+const listMapper = (it) => ({
+    genre: it.realmName,
+    title: it.title,
+    div: 'simple',
+    startDate: it.startDate,
+    endDate: it.endDate,
+    place: it.place,
+    sigungu: it.sigungu,
+    area: it.area,
+    thumbnail: it.thumbnail,
+})
+
+
 function filterItemArea(area) {
     if (area === "" || area == null) {
         return "EMPTY";
@@ -51,28 +83,55 @@ function filterItemArea(area) {
     }
 }
 
-async function callItems(serviceTp, firstPages, totalPages) {
+function filterGenre(genre) {
+    switch (genre) {
+        case "음악/콘서트":
+            genre = "음악\\/콘서트";
+            break;
+        case "뮤지컬/오페라":
+            genre = "뮤지컬\\/오페라";
+            break;
+        case "무용/발레":
+            genre = "무용\\/발레";
+            break;
+        default:
+            break;
+    }
+    return genre;
+}
+
+function createTagQuery(idxName, area, genre, div) {
+    let tagQuery;
+    switch (idxName) {
+        case 'performance':
+            tagQuery = `@area:{${area}} @genre:{${genre}} @div:{${div}}`;
+            break;
+        case 'festival':
+        case 'experience':
+            tagQuery = `@area:{${area}} @div:{${div}}`;
+            break;
+    }
+    return tagQuery;
+}
+
+async function getItems(idxName, firstPages, totalPages) {
     try {
-        let prefix;
+        let serviceTp = '';
 
-        const url = 'https://apis.data.go.kr/B553457/cultureinfo/realm2';
-        const numOfRows = '10';
-
-        switch (serviceTp) {
-            case '공연/전시':
+        switch (idxName) {
+            case 'performance':
                 serviceTp = 'A';
-                prefix = 'performance';
                 break;
-            case '행사/축제':
+            case 'festival':
                 serviceTp = 'B';
-                prefix = 'festival';
                 break;
-            case '교육/체험':
+            case 'experience':
                 serviceTp = 'C';
-                prefix = 'experience';
                 break;
         }
 
+        const url = 'https://apis.data.go.kr/B553457/cultureinfo/realm2';
+        const numOfRows = '10';
 
         for (let pageNo = firstPages; pageNo <= totalPages; pageNo++) {
             const response = await axios.get(url, {
@@ -89,16 +148,16 @@ async function callItems(serviceTp, firstPages, totalPages) {
             const items = result?.response?.body?.items?.item;
             if (items) {
                 const itemArray = Array.isArray(items) ? items : [items];
-                await saveItemsToRedis(itemArray, prefix);
+                await saveItems(idxName, itemArray, listMapper);
             }
         }
         return { message: 'Done' };
     } catch (error) {
-        console.error('Error fetching event data:', error);
+        return { error: 'Error fetching event data' };
     }
 }
 
-async function callItemsDetail(idxName, contentId) {
+async function getItemDetail(idxName, contentId) {
     try {
         const url = 'https://apis.data.go.kr/B553457/cultureinfo/detail2';
         const response = await axios.get(url, {
@@ -107,86 +166,74 @@ async function callItemsDetail(idxName, contentId) {
                 seq: contentId,
             }
         });
+
         const data = response.data;
         const result = await parser.parseStringPromise(data);
         const item = result?.response?.body?.items?.item;
 
-        await saveItemDetailToRedis(idxName, item, contentId);
+        idxName = idxName.concat(':detail');
 
-        return { message: 'Detail saved' };
+        await saveItem(idxName, item, detailMapper);
+
+        return { message: 'Done' };
     } catch (error) {
-        console.error('Error fetching item detail:', error);
+        return { error: 'Error fetching event detail data' };
     }
 }
 
-async function saveItemDetailToRedis(idxName, item, key) {
-    try {
-        const hashKey = `${idxName}:detail:${key}`;
 
+async function saveItem(idxName, item, mapper) {
+    try {
+        const key = item.seq;
+        const hashKey = `${idxName}:${key}`;
+        const payload = mapper ? mapper(item) : { ...item };
         item.area = filterItemArea(item.area);
 
-        await redisClient.hSet(hashKey, {
-            title: item.title,
-            startDate: item.startDate,
-            endDate: item.endDate,
-            place: item.place,
-            sigungu: item.sigungu,
-            area: item.area,
-            url: item.url,
-            imgUrl: item.imgUrl,
-            placeAddr: item.placeAddr,
-            placeUrl: item.placeUrl,
-            gpsX: item.gpsX,
-            gpsY: item.gpsY,
-            price: item.price,
-            realmName: item.realmName,
-            phone: item.phone,
-        });
+        await redisClient.hSet(hashKey, payload);
     } catch (error) {
-        console.error('Error saving item detail to Redis:', error);
+        return { error: 'Error saving item detail to Redis' };
     }
 }
 
-async function saveItemsToRedis(items, prefix) {
+async function saveItems(idxName, items, mapper, usePipeline = true) {
     try {
-        for (let i = 0; i < items.length; i++) {
+        if (usePipeline && typeof redisClient.multi === 'function') {
+            const multi = redisClient.multi();
+            for (const item of items) {
+                const key = item.seq;
+                const hashKey = `${idxName}:${key}`;
 
-            const area = filterItemArea(items[i].area);
+                item.area = filterItemArea(item.area);
+                const payload = mapper ? mapper(item) : { ...item };
 
-            const hashKey = `${prefix}:${items[i].seq}`;
-            await redisClient.hSet(hashKey, {
-                genre: items[i].realmName,
-                title: items[i].title,
-                startDate: items[i].startDate,
-                endDate: items[i].endDate,
-                place: items[i].place,
-                sigungu: items[i].sigungu,
-                area: area,
-                thumbnail: items[i].thumbnail,
-            });
-
+                multi.hSet(hashKey, payload);
+            }
+            await multi.exec();
+        } else {
+            for (const item of items) {
+                await saveItem(idxName, item, mapper);
+            }
         }
-    } catch (error) {
-        console.error('Error saving items to Redis:', error);
+    } catch (err) {
+        return { error: 'Error saving items to Redis' };
     }
 }
 
-async function getItemsDetail(idxName, contentId) {
+
+async function fetchItemsDetail(idxName, contentId) {
     try {
         const hashKey = `${idxName}:detail:${contentId}`;
         const item = await redisClient.hGetAll(hashKey);
         return item;
     } catch (error) {
-        console.error('Error getting item detail from Redis:', error);
+        return { error: 'Error getting item detail from Redis' };
     }
 };
 
-async function getItemsByArea(idxName, area, maxCap = 10) {
+async function fetchItems(idxName, tagQuery, returnFields, maxCap = 10) {
     try {
-        const tagQuery = `@area:{${area}}`;
         const indexName = `idx:${idxName}`;
 
-        const returnFields = ['area', 'startDate', 'endDate', 'title', 'place', 'thumbnail', 'sigungu', 'genre'];
         const returnArgs = returnFields.length ? ['RETURN', String(returnFields.length), ...returnFields] : [];
 
         const cmd = [
@@ -208,6 +255,7 @@ async function getItemsByArea(idxName, area, maxCap = 10) {
     }
 }
 
+
 async function storeDetailInfo(idxName) {
     try {
         const pattern = `${idxName}:*`;
@@ -222,12 +270,12 @@ async function storeDetailInfo(idxName) {
 
         for (const key of keys) {
             const contentId = key.split(':')[1];
-            await callItemsDetail(idxName, contentId);
+            await getItemDetail(idxName, contentId);
         }
 
         return { message: 'Detail info stored' };
     } catch (error) {
-        console.error('Error storing detail info:', error);
+        return { error: 'Error storing detail info' };
     }
 }
 
@@ -251,10 +299,9 @@ function parseSearchResults(raw) {
     return { total, results };
 }
 
-//Redis에서 아이템 전부 꺼내기
-async function getAllItemsfromRedis() {
+async function storeSimpleItems(idxName) {
     try {
-        const pattern = "item:*";
+        const pattern = `${idxName}:[0-9]*`;
         let cursor = '0';
         let keys = [];
 
@@ -264,16 +311,15 @@ async function getAllItemsfromRedis() {
             keys = keys.concat(reply.keys);
         } while (cursor !== '0');
 
-        const results = {};
         for (const key of keys) {
-            const item = await redisClient.hGetAll(key);
-            results[key] = item;
+            console.log(key);
         }
-        return results;
     } catch (error) {
-        console.error('Error getting all items from Redis:', error);
+        console.log(error);
     }
 }
+
+
 
 //Date 비어있는 값 조회
 async function filterItemsWithDate(limit = 100) {
@@ -307,11 +353,13 @@ async function filterItemsWithDate(limit = 100) {
 }
 
 module.exports = {
-    callItems,
-    getItemsByArea,
+    getItems,
+    filterGenre,
+    createTagQuery,
+    fetchItems,
+    getItemDetail,
     storeDetailInfo,
-    getItemsDetail,
-    callItemsDetail,
-    getAllItemsfromRedis,
-    filterItemsWithDate
+    fetchItemsDetail,
+    filterItemsWithDate,
+    storeSimpleItems
 };
