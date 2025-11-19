@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const supabase = require('../../config/supaClient');
 const router = express.Router();
+const authService = require('./authService');
 
 
 //앱에서 필요한 환경변수 전달

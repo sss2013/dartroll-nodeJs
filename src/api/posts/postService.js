@@ -5,11 +5,12 @@ const { updateLocale } = require('moment');
 const dayjs = require('dayjs');
 
 // 각 함수는 예외를 던지므로 호출에서 try-catch로 처리해야 합니다.
+// DB의 post 테이블(컬렉션) 참조하는 함수
 function _post() {
     return getCollection('post');
 }
 
-//새 포스트 작성 일단 { area, genre, title, content }
+//새 포스트 작성, 일단 { area, genre, title, content }
 //이후에 author(작성자 닉네임 등), comment(댓글) 추가
 //likes, views 등 추가할수도? 논의 필요
 async function createPost(payload) {

@@ -65,6 +65,7 @@ async function handleSignUp(access, refresh, accessExpiresAt, refreshExpiresAt, 
         //user_token의 uuid 반환
         return json({ status: 200, user_token_id: userTokenId });
     } catch (error) {
+        console.log(error);
         return json({ status: 500, error: 'auth validation failed' });
     }
 }

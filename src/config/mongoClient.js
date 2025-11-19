@@ -23,6 +23,7 @@ async function connectMongo() {
     return db;
 }
 
+//컬렉션 참조 반환
 function getCollection(name) {
     if (!db) {
         throw new Error('MongoDB에 연결되어 있지 않습니다. connectMongo()를 먼저 호출하세요.');
