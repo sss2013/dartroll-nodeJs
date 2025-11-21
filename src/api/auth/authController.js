@@ -15,26 +15,26 @@ router.get('/config', (req, res) => {
     })
 })
 
-//유저의 카카오 최초 로그인
+//유저의 카카오 로그인
 router.post('/api/auth/kakaoSignIn', async (req, res) => {
     const { provider, accessToken, refreshToken, accessExpiresAt, refreshExpiresAt } = req.body;
 
     if (!accessToken) return res.status(400).json({ error: 'missing Access Token' });
 
     const result =
-        await handleSignUp(accessToken, refreshToken, accessExpiresAt, refreshExpiresAt, provider);
+        await authService.handleSignUp(accessToken, refreshToken, accessExpiresAt, refreshExpiresAt, provider);
 
     res.json(result);
 });
 
-//프로필 변경
+//프로필 입력 & 변경
 router.post('/api/auth/profile', async (req, res) => {
     const { user_token_id, name, birthdate, categories, regions } = req.body;
     if (!user_token_id || !name || !birthdate || !categories || !regions) {
         return res.status(400).json({ error: 'missing parameters' });
     }
 
-    const result = await profileSetup(user_token_id, name, birthdate, categories, regions);
+    const result = await authService.profileSetup(user_token_id, name, birthdate, categories, regions);
     res.json(result);
 })
 
@@ -45,7 +45,7 @@ router.get('/api/user/status', async (req, res) => {
         return res.status(400).json({ error: 'missing parameters' });
     }
 
-    const result = await checkInput(provider, provider_user_id);
+    const result = await authService.checkInput(provider, provider_user_id);
     res.json(result);
 })
 
@@ -53,7 +53,7 @@ router.post('/api/auth/refresh', async (req, res) => {
     const { user_token_id } = req.body;
     if (!user_token_id) return res.status(400).json({ error: 'missing' });
 
-    const result = await refresh(user_token_id);
+    const result = await authService.refresh(user_token_id);
     res.json(result);
 });
 
