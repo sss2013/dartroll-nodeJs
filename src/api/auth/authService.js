@@ -57,16 +57,16 @@ async function handleSignUp(access, refresh, accessExpiresAt, refreshExpiresAt, 
 
         if (error) {
             console.error('Error upserting user token:', error);
-            return json({ status: 500, error: 'Database upsert failed' });
+            return { status: 500, error: 'Database upsert failed' };
         }
 
         const userTokenId = data && data.length > 0 ? data[0].id : null;
 
         //user_token의 uuid 반환
-        return json({ status: 200, user_token_id: userTokenId });
+        return { status: 200, user_token_id: userTokenId };
     } catch (error) {
         console.log(error);
-        return json({ status: 500, error: 'auth validation failed' });
+        return { status: 500, error: 'auth validation failed' };
     }
 }
 

@@ -5,6 +5,7 @@ const router = express.Router();
 const authService = require('./authService');
 
 
+
 //앱에서 필요한 환경변수 전달
 router.get('/config', (req, res) => {
     res.json({
