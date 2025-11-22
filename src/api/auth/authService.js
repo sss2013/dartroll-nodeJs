@@ -161,14 +161,14 @@ async function refresh(userId, provider) {
         switch (provider) {
             case 'kakao':
                 params.append('client_id', process.env.KAKAO_NATIVE_APP_KEY);
-                response = await axios.get('https://kauth.kakao.com/oauth/token', params, {
+                response = await axios.post('https://kauth.kakao.com/oauth/token', params.toString(), {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
                 });
                 break;
             case 'naver':
                 params.append('client_id', process.env.NAVER_CLIENT_ID);
                 params.append('client_secret', process.env.NAVER_CLIENT_SECRET);
-                response = await axios.post('https://nid.naver.com/oauth2.0/token', params, {
+                response = await axios.post('https://nid.naver.com/oauth2.0/token', params.toString(), {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
                 });
                 break;
