@@ -39,9 +39,6 @@ async function decrypt(encryptedStr) {
     }
 }
 
-async function findUserByAccessToken(accessToken) {
-
-}
 
 async function checkId(provider, accessToken) {
     try {
@@ -184,14 +181,13 @@ async function refresh(userId, provider) {
         const newRefreshToken = newTokenData.refresh_token || refreshToken;
         const expiresIn = newTokenData.expires_in;
 
-        console.log(newAccessToken, newRefreshToken, expiresIn);
         await supabase.from('user_tokens').update({
             access_token: newAccessToken,
-            refresh_token: encrypt(newRefreshToken),
+            refresh_token: await encrypt(newRefreshToken),
             access_expires_at: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
         }).eq('user_id', userId).eq('provider', provider);
 
-        return { status: 200, token: newAccessToken, expiresAt: expiresIn };
+        return { status: 200, token: newAccessToken, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() };
     } catch (err) {
         console.log(err);
         return { status: 500, error: 'token refresh failed' };
