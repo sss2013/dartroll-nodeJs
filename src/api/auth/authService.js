@@ -90,6 +90,7 @@ async function handleSignUp(access, refresh, accessExpiresAt, refreshExpiresAt, 
             console.error('Error upserting user token:', error);
             return { status: 500, error: 'Database upsert failed' };
         }
+
         return { status: 200 };
     } catch (error) {
         console.log(error);
@@ -184,13 +185,13 @@ async function refresh(userId, provider) {
         const expiresIn = newTokenData.expires_in;
 
         console.log(newAccessToken, newRefreshToken, expiresIn);
-        // await supabase.from('user_tokens').update({
-        //     access_token: newAccessToken,
-        //     refresh_token: encrypt(newRefreshToken),
-        //     access_expires_at: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
-        // }).eq('user_id', userId).eq('provider', provider);
+        await supabase.from('user_tokens').update({
+            access_token: newAccessToken,
+            refresh_token: encrypt(newRefreshToken),
+            access_expires_at: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
+        }).eq('user_id', userId).eq('provider', provider);
 
-        // return { status: 200, token: newAccessToken, expiresAt: expiresIn };
+        return { status: 200, token: newAccessToken, expiresAt: expiresIn };
     } catch (err) {
         console.log(err);
         return { status: 500, error: 'token refresh failed' };
