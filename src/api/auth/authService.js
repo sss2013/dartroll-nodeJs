@@ -1,10 +1,11 @@
 const axios = require('axios');
 const supabase = require('../../config/supaClient');
 const crypto = require('crypto');
+const { param } = require('./authController');
 
 const ENC_KEY = process.env.TOKEN_ENC_KEY;
 
-function encrypt(text) {
+async function encrypt(text) {
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(ENC_KEY, 'base64'), iv);
     let encrypted = cipher.update(text, 'utf8', 'base64');
@@ -38,11 +39,41 @@ async function decrypt(encryptedStr) {
     }
 }
 
+async function findUserByAccessToken(accessToken) {
+
+}
+
+async function checkId(provider, accessToken) {
+    try {
+        let providerUserId;
+        if (provider === 'kakao') {
+            const kakaoRes = await axios.get('https://kapi.kakao.com/v2/user/me', {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            }
+            );
+            providerUserId = String(kakaoRes.data.id);
+        } else {
+            const naverRes = await axios.get('https://openapi.naver.com/v1/nid/me', {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            })
+            providerUserId = String(naverRes.data.response.id);
+        }
+        return providerUserId;
+    } catch (error) {
+        console.error('Error fetching user ID from provider:', error);
+        throw new Error('Failed to fetch user ID from provider');
+    }
+}
+
 async function handleSignUp(access, refresh, accessExpiresAt, refreshExpiresAt, provider) {
     try {
         const userId = await checkId(provider, access);
 
-        const encryptedRefresh = refresh ? encrypt(refresh) : null;
+        const encryptedRefresh = refresh ? await encrypt(refresh) : null;
 
         const { data, error } = await supabase
             .from('user_tokens')
@@ -59,44 +90,14 @@ async function handleSignUp(access, refresh, accessExpiresAt, refreshExpiresAt, 
             console.error('Error upserting user token:', error);
             return { status: 500, error: 'Database upsert failed' };
         }
-
-        const userTokenId = data && data.length > 0 ? data[0].id : null;
-
-        //user_token의 uuid 반환
-        return { status: 200, user_token_id: userTokenId };
+        return { status: 200 };
     } catch (error) {
         console.log(error);
         return { status: 500, error: 'auth validation failed' };
     }
 }
 
-async function checkId(provider, accessToken) {
-    try {
-        let providerUserId;
-        if (provider === 'kakao') {
-            const kakaoRes = await axios.get('https://kapi.kakao.com/v2/user/me', {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            }
-            );
-            providerUserId = String(kakaoRes.data.id);
-        } else {
-            providerUserId = await axios.get('https://openapi.naver.com/v1/nid/me', {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            })
-            providerUserId = String(naverRes.data.response.id);
-        }
-        return providerUserId;
-    } catch (error) {
-        console.error('Error fetching user ID from provider:', error);
-        throw new Error('Failed to fetch user ID from provider');
-    }
-}
-
-async function profileSetup(user_token_id, name, birthdate, categories, regions) {
+async function profileSetup(userId, provider, name, birthdate, categories, regions) {
     try {
         const { data: profile, error: insertErr } = await supabase
             .from('user_profiles')
@@ -112,7 +113,8 @@ async function profileSetup(user_token_id, name, birthdate, categories, regions)
         const { error: updErr } = await supabase
             .from('user_tokens')
             .update({ input_complete: true, updated_at: new Date().toISOString() })
-            .eq('id', user_token_id);
+            .eq('user_id', userId)
+            .eq('provider', provider);
 
         if (updErr) throw updErr;
 
@@ -123,12 +125,12 @@ async function profileSetup(user_token_id, name, birthdate, categories, regions)
     }
 }
 
-async function checkInput(provider, provider_user_id) {
+async function checkInput(userId, provider) {
     const { data, error } = await supabase
         .from('user_tokens')
         .select('id, input_complete')
         .eq('provider', provider)
-        .eq('user_id', provider_user_id)
+        .eq('user_id', userId)
         .limit(1)
         .single();
 
@@ -136,14 +138,17 @@ async function checkInput(provider, provider_user_id) {
     return ({ input_complete: data?.input_complete ?? false, user_token_id: data?.id });
 }
 
-async function refresh(user_token_id) {
+async function refresh(userId, provider) {
+    let response;
+
     const { data, error } = await supabase
         .from('user_tokens')
         .select('refresh_token')
-        .eq('id', user_token_id)
+        .eq('user_id', userId)
+        .eq('provider', provider)
         .single();
 
-    if (error || !data) return { error: 'no token' };
+    if (error || !data) return { error: 'no data' };
 
     const encRefresh = data.refresh_token;
     const refreshToken = await decrypt(encRefresh);
@@ -151,19 +156,41 @@ async function refresh(user_token_id) {
     try {
         const params = new URLSearchParams();
         params.append('grant_type', 'refresh_token');
-        params.append('client_id', process.env.KAKAO_NATIVE_APP_KEY);
         params.append('refresh_token', refreshToken);
 
-        const tokenRes = await axios.post('https://kauth.kakao.com/oauth/token', params);
-        const newAccessToken = tokenRes.data.access_token;
-        const expiresIn = tokenRes.data.expires_in;
+        switch (provider) {
+            case 'kakao':
+                params.append('client_id', process.env.KAKAO_NATIVE_APP_KEY);
+                response = await axios.get('https://kauth.kakao.com/oauth/token', params, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                });
+                break;
+            case 'naver':
+                params.append('client_id', process.env.NAVER_CLIENT_ID);
+                params.append('client_secret', process.env.NAVER_CLIENT_SECRET);
+                response = await axios.post('https://nid.naver.com/oauth2.0/token', params, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                });
+                break;
+            default:
+                return { status: 400, error: 'unsupported provider' };
+        }
 
-        await supabase.from('user_tokens').update({
-            access_token: newAccessToken,
-            access_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
-        }).eq('id', user_token_id);
+        console.log('token refresh response:', response.data);
 
-        return { access_token: newAccessToken, expires_in: expiresIn };
+        const newTokenData = response.data;
+        const newAccessToken = newTokenData.access_token;
+        const newRefreshToken = newTokenData.refresh_token || refreshToken;
+        const expiresIn = newTokenData.expires_in;
+
+        console.log(newAccessToken, newRefreshToken, expiresIn);
+        // await supabase.from('user_tokens').update({
+        //     access_token: newAccessToken,
+        //     refresh_token: encrypt(newRefreshToken),
+        //     access_expires_at: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
+        // }).eq('user_id', userId).eq('provider', provider);
+
+        // return { status: 200, token: newAccessToken, expiresAt: expiresIn };
     } catch (err) {
         console.log(err);
         return { status: 500, error: 'token refresh failed' };
@@ -173,6 +200,7 @@ async function refresh(user_token_id) {
 module.exports = {
     handleSignUp,
     profileSetup,
+    checkId,
     checkInput,
     refresh
 };
