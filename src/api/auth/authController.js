@@ -61,8 +61,8 @@ router.get('/api/user/status', async (req, res) => {
 
 router.post('/api/auth/refresh', async (req, res) => {
     const { accessToken, provider } = req.body;
+    console.log(accessToken, provider);
     if (!accessToken) return res.status(400).json({ error: 'missing token' });
-
     const userId = await authService.checkId(provider, accessToken);
     if (!userId) {
         return res.status(400).json({ error: 'invalid access token' });
