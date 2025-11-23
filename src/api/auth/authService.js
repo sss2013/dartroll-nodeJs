@@ -39,7 +39,6 @@ async function decrypt(encryptedStr) {
     }
 }
 
-
 async function checkId(provider, accessToken) {
     try {
         let providerUserId;
@@ -64,6 +63,18 @@ async function checkId(provider, accessToken) {
         console.error('Error fetching user ID from provider:', error);
         throw new Error('Failed to fetch user ID from provider');
     }
+}
+
+async function findTokenRowByAccess(provider, accessToken) {
+    const { data, error } = await supabase
+        .from('user_tokens')
+        .select('user_id, provider, access_token, refresh_token')
+        .eq('provider', provider)
+        .eq('access_token', accessToken)
+        .single();
+
+    if (error || !data) return null;
+    return data;
 }
 
 async function handleSignUp(access, refresh, accessExpiresAt, refreshExpiresAt, provider) {
@@ -136,26 +147,14 @@ async function checkInput(userId, provider) {
     return ({ input_complete: data?.input_complete ?? false, user_token_id: data?.id });
 }
 
-async function refresh(userId, provider) {
-    let response;
-
-    const { data, error } = await supabase
-        .from('user_tokens')
-        .select('refresh_token')
-        .eq('user_id', userId)
-        .eq('provider', provider)
-        .single();
-
-    if (error || !data) return { error: 'no data' };
-
-    const encRefresh = data.refresh_token;
-    const refreshToken = await decrypt(encRefresh);
-
+async function refresh(provider, tokenRow) {
     try {
+        const refreshToken = await decrypt(tokenRow.refresh_token);
         const params = new URLSearchParams();
         params.append('grant_type', 'refresh_token');
         params.append('refresh_token', refreshToken);
 
+        let response;
         switch (provider) {
             case 'kakao':
                 params.append('client_id', process.env.KAKAO_NATIVE_APP_KEY);
@@ -174,29 +173,38 @@ async function refresh(userId, provider) {
                 return { status: 400, error: 'unsupported provider' };
         }
 
-        console.log('token refresh response:', response.data);
+        const data = response.data;
+        const newAccessToken = data.access_token;
+        const newRefreshToken = data.refresh_token || refreshToken;
+        const expiresIn = data.expires_in; //seconds로 반환
 
-        const newTokenData = response.data;
-        const newAccessToken = newTokenData.access_token;
-        const newRefreshToken = newTokenData.refresh_token || refreshToken;
-        const expiresIn = newTokenData.expires_in;
+        const expiresAtIso = expiresIn
+            ? new Date(Date.now() + expiresIn * 1000).toISOString()
+            : null;
 
-        await supabase.from('user_tokens').update({
+        const { error: updateErr } = await supabase.from('user_tokens').update({
             access_token: newAccessToken,
             refresh_token: await encrypt(newRefreshToken),
-            access_expires_at: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
-        }).eq('user_id', userId).eq('provider', provider);
+            access_expires_at: expiresAtIso,
+        }).eq('user_id', tokenRow.user_id).eq('provider', provider);
 
-        return { status: 200, token: newAccessToken, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() };
+        if (updateErr) {
+            return { status: 500, error: 'db update failed' };
+        }
+
+        return { status: 200, token: newAccessToken, expiresAt: expiresAtIso };
     } catch (err) {
-        console.log(err);
-        return { status: 500, error: 'token refresh failed' };
+        //외부 API에서 401 발생 시 진입
+        console.log('refresh error:', err.response?.data || err.message);
+        const status = err?.response?.status || 500;
+        return { status, error: 'token refresh failed' };
     }
 }
 
 module.exports = {
     handleSignUp,
     profileSetup,
+    findTokenRowByAccess,
     checkId,
     checkInput,
     refresh

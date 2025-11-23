@@ -61,15 +61,24 @@ router.get('/api/user/status', async (req, res) => {
 
 router.post('/api/auth/refresh', async (req, res) => {
     const { accessToken, provider } = req.body;
-    console.log(accessToken, provider);
-    if (!accessToken) return res.status(400).json({ error: 'missing token' });
-    const userId = await authService.checkId(provider, accessToken);
-    if (!userId) {
-        return res.status(400).json({ error: 'invalid access token' });
-    }
+    if (!accessToken || !provider) return res.status(400).json({ error: 'missing parameters' });
 
-    const result = await authService.refresh(userId, provider);
-    res.json(result);
+    try {
+        const tokenRow = await authService.findTokenRowByAccess(provider, accessToken);
+        if (!tokenRow) {
+            return res.status(400).json({ error: 'token not found' });
+        }
+
+        const result = await authService.refresh(provider, tokenRow);
+        if (result.error) {
+            const status = result.status || 500;
+            return res.status(status).json({ error: result.error });
+        }
+        return res.json(result);
+    } catch (error) {
+        console.error('Error during token refresh:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 
