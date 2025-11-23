@@ -59,16 +59,31 @@ router.get('/api/user/status', async (req, res) => {
     res.json(result);
 })
 
-router.post('/api/auth/refresh', async (req, res) => {
-    const { accessToken, provider, localTime } = req.body;
-    if (!accessToken || !provider || !localTime) return res.status(400).json({ error: 'missing parameters' });
-
+router.post('/api/auth/checkToken', async (req, res) => {
+    const { provider, localTime, accessToken, expiresAt } = req.body;
+    if (!provider || !localTime || !accessToken || !expiresAt) {
+        return res.status(400).json({ error: 'missing parameters' });
+    }
     try {
         const timeCheck = await authService.checkTime(localTime);
         if (timeCheck.status !== 200) {
             return res.status(timeCheck.status).json({ error: timeCheck.error });
         }
 
+        const tokenCheck = await authService.checkToken(provider, accessToken, expiresAt);
+
+        return res.status(tokenCheck.status).json(tokenCheck);
+    } catch (err) {
+        console.error('Error during token check:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
+router.post('/api/auth/refresh', async (req, res) => {
+    const { accessToken, provider } = req.body;
+    if (!accessToken || !provider) return res.status(400).json({ error: 'missing parameters' });
+
+    try {
         const tokenRow = await authService.findTokenRowByAccess(provider, accessToken);
         if (!tokenRow) {
             console.log('Token not found for refresh:', { provider, accessToken });
@@ -83,7 +98,7 @@ router.post('/api/auth/refresh', async (req, res) => {
         }
 
         console.log(result);
-        return result;
+        return res.status(result.status).json(result);
     } catch (error) {
         console.error('Error during token refresh:', error);
         return res.status(500).json({ error: 'Internal server error' });

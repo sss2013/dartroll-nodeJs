@@ -84,9 +84,40 @@ async function checkTime(localTime) {
     const toleranceMs = 60 * 1000;
 
     if (diffMs > toleranceMs) {
-        return { status: 405, error: 'time difference too large' };
+        return { status: 422, error: 'time difference too large' };
     }
     return { status: 200 };
+}
+
+async function checkToken(provider, accessToken, expiresAt) {
+    try {
+        const expiresDate = new Date(expiresAt);
+        const storedTime = await supabase.from('user_tokens').select('access_expires_at')
+            .eq('provider', provider)
+            .eq('access_token', accessToken)
+            .single();
+
+        if (storedTime.error || !storedTime.data) {
+            return { status: 400, error: 'token not found' };
+        }
+
+        const dbExpiresDate = new Date(storedTime.data.access_expires_at);
+        const toleranceMs = 1000; // 오차 1초 허용
+
+        if (Math.abs(dbExpiresDate.getTime() - expiresDate.getTime()) > toleranceMs) {
+            return { status: 422, error: 'token expiry mismatch' };
+        }
+
+        if (new Date() >= expiresDate) {
+            return { status: 401, error: 'token expired' };
+        }
+
+        return { status: 200, valid: true };
+
+    } catch (err) {
+        console.error('Error in checkToken:', err);
+        return { status: 500, error: 'internal server error' };
+    }
 }
 
 async function handleSignUp(access, refresh, accessExpiresAt, refreshExpiresAt, provider) {
@@ -204,18 +235,19 @@ async function refresh(provider, tokenRow) {
             return { status: 500, error: 'db update failed' };
         }
 
-        return { status: 200, token: newAccessToken, expiresAt: expiresAtIso };
+        return { status: 200, token: newAccessToken, expiresAt: new Date(expiresAtIso) };
     } catch (err) {
         //외부 API에서 401 발생 시 진입
         console.log('refresh error:', err.response?.data || err.message);
         const status = err?.response?.status || 500;
-        return { status, error: 'in the service layer, token refresh failed' };
+        return { status: 401, error: 'provider rejected refresh token' };
     }
 }
 
 module.exports = {
     handleSignUp,
     checkTime,
+    checkToken,
     profileSetup,
     findTokenRowByAccess,
     checkId,
