@@ -60,17 +60,24 @@ router.get('/api/user/status', async (req, res) => {
 })
 
 router.post('/api/auth/refresh', async (req, res) => {
-    const { accessToken, provider } = req.body;
-    if (!accessToken || !provider) return res.status(400).json({ error: 'missing parameters' });
+    const { accessToken, provider, localTime } = req.body;
+    if (!accessToken || !provider || !localTime) return res.status(400).json({ error: 'missing parameters' });
 
     try {
+        const timeCheck = await authService.checkTime(localTime);
+        if (timeCheck.status !== 200) {
+            return res.status(timeCheck.status).json({ error: timeCheck.error });
+        }
+
         const tokenRow = await authService.findTokenRowByAccess(provider, accessToken);
         if (!tokenRow) {
+            console.log('Token not found for refresh:', { provider, accessToken });
             return res.status(400).json({ error: 'token not found' });
         }
 
         const result = await authService.refresh(provider, tokenRow);
         if (result.error) {
+            console.log('Refresh error:', result.error);
             const status = result.status || 500;
             return res.status(status).json({ error: result.error });
         }

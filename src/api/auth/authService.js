@@ -77,6 +77,18 @@ async function findTokenRowByAccess(provider, accessToken) {
     return data;
 }
 
+async function checkTime(localTime) {
+    const serverTime = new Date();
+    const clientTime = new Date(localTime);
+    const diffMs = Math.abs(serverTime.getTime() - clientTime.getTime());
+    const toleranceMs = 60 * 1000;
+
+    if (diffMs > toleranceMs) {
+        return { status: 405, error: 'time difference too large' };
+    }
+    return { status: 200 };
+}
+
 async function handleSignUp(access, refresh, accessExpiresAt, refreshExpiresAt, provider) {
     try {
         const userId = await checkId(provider, access);
@@ -203,6 +215,7 @@ async function refresh(provider, tokenRow) {
 
 module.exports = {
     handleSignUp,
+    checkTime,
     profileSetup,
     findTokenRowByAccess,
     checkId,
