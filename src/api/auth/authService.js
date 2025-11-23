@@ -197,7 +197,7 @@ async function refresh(provider, tokenRow) {
         //외부 API에서 401 발생 시 진입
         console.log('refresh error:', err.response?.data || err.message);
         const status = err?.response?.status || 500;
-        return { status, error: 'token refresh failed' };
+        return { status, error: 'in the service layer, token refresh failed' };
     }
 }
 

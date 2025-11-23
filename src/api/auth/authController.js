@@ -74,7 +74,9 @@ router.post('/api/auth/refresh', async (req, res) => {
             const status = result.status || 500;
             return res.status(status).json({ error: result.error });
         }
-        return res.json(result);
+
+        console.log(result);
+        return result;
     } catch (error) {
         console.error('Error during token refresh:', error);
         return res.status(500).json({ error: 'Internal server error' });
