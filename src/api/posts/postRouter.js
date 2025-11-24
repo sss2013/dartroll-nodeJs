@@ -60,5 +60,35 @@ router.get('/api/post/getByArea', async (req, res) => { //page limit gerne area
         res.status(500).json({ error: 'Error get post' });
     }
 });
-
+router.post('/api/post/:id/comment', async (req, res) => {//postId, userId,text,tap
+    try {
+        const postId = req.params.id;
+        const userId = req.body.userId;
+        const text = req.body.text;
+        const tap = req.body.tap; //review인지 matching인지 구분    
+        if (!postId ||!tap ||!userId ||!text) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        payload = {postId,userId,text}
+        const result = await postService.updateComment(payload, tap);
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Error creating post:', error);
+        res.status(500).json({ error: 'Error creating post' });
+    }
+});
+router.get('/api/post/:id/views', async (req, res) => { //postId tap
+    try {
+        const postId = req.params.id
+        const tap = req.body.tap;
+        if (!postId||!tap) {
+            return res.status(400).json({ error: 'Missing required query parameters' });
+        }
+        const result = await postService.updateView(postId, tap);
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Error get post:', error);
+        res.status(500).json({ error: 'Error get post' });
+    }
+});
 module.exports = router;

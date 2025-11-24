@@ -35,6 +35,8 @@ function selectCollection(tap) {
 async function createPost(payload, tap) {
     const doc = {
         ...payload,
+        views: 0,
+        comment:[],
         createdAt: new Date(),
         updatedAt: new Date(),
     }
@@ -70,15 +72,29 @@ async function getFilteredPost(payload, tap) {
 }
 
 //글 삭제 id author (테스트 안해봤습니다)
-async function deletePost(payload) {
-    const post = await _post().findOne({ _id: new ObjectId(payload["id"]) });
+async function deletePost(payload,tap) {
+    const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload["id"]) });
     //if(post["author"] !== payload["author"]){return {error: can't delete}}
-    const result = await _post().deleteOne({ _id: new ObjectId(payload["id"]) });
+    const result = await selectCollection(tap).deleteOne({ _id: new ObjectId(payload["id"]) });
     return { result };
+}
+async function updateView(postId,tap) {//{글의 id}  views++
+    const result = await selectCollection(tap).findByIdAndUpdate(postId, { $inc: { views: 1 } });
+    return result;
+}
+async function updateComment(payload,tap) {//postId, userId, text
+    const { postId,userId,text } = payload;
+    result = await selectCollection(tap).updateOne(
+    { _id: new ObjectId(postId) },
+    { $push: { comments: { userId, text, updatedAt: new Date() } } }
+  );
+    return result;
 }
 //router에서 호출할 함수들은 여기에 포함해야됨
 module.exports = {
     createPost,
     getPost,
     getFilteredPost,
+    updateView,
+    updateComment
 }
