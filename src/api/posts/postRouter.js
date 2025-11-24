@@ -5,15 +5,16 @@ const postService = require('./postService');
 router.post('/api/post/upload', async (req, res) => {
     try {
         const title = req.body.title;
+        const userId = req.body.userId;
         const area = req.body.area;
         const genre = req.body.genre;
         const content = req.body.content;
         const url = req.body.url;
         const tap = req.body.tap; //review인지 matching인지 구분    
-        if (!title || !area || !genre || !content || !url || !tap) {
+        if (!title || !area || !genre || !content || !url || !tap||!userId) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
-        const payload = { title, area, genre, content, url };
+        const payload = { title, area, genre, content, url,userId };
         const result = await postService.createPost(payload, tap);
         res.status(201).json(result);
     } catch (error) {
@@ -60,17 +61,31 @@ router.get('/api/post/getByArea', async (req, res) => { //page limit gerne area
         res.status(500).json({ error: 'Error get post' });
     }
 });
-router.post('/api/post/:id/comment', async (req, res) => {//postId, userId,text,tap
+router.post('/api/post/:id/comment', async (req, res) => {//postId, userId,text,parentId
     try {
         const postId = req.params.id;
         const userId = req.body.userId;
         const text = req.body.text;
-        const tap = req.body.tap; //review인지 matching인지 구분    
-        if (!postId ||!tap ||!userId ||!text) {
+        const parentId = req.body.parentId || null; 
+        if (!postId ||!userId ||!text) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
-        payload = {postId,userId,text}
-        const result = await postService.updateComment(payload, tap);
+        const payload = {postId,userId,text,parentId}
+        const result = await postService.createComment(payload);
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Error creating post:', error);
+        res.status(500).json({ error: 'Error creating post' });
+    }
+});
+router.get('/api/post/:id/comment', async (req, res) => {//postId, userId,text,parentId
+    try {
+        const postId = req.params.id;
+        if (!postId) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        const payload = {postId}
+        const result = await postService.getComment(payload);
         res.status(201).json(result);
     } catch (error) {
         console.error('Error creating post:', error);

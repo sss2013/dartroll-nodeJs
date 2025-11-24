@@ -9,12 +9,13 @@ const dayjs = require('dayjs');
 function _review() {
     return getCollection('review');
 }
-
 // DB의 matching 테이블(컬렉션) 참조하는 함수
 function _matching() {
     return getCollection('matching');
 }
-
+function _comment() {
+    return getCollection('comment');
+}
 function selectCollection(tap) {
     try {
         switch (tap) {
@@ -29,14 +30,14 @@ function selectCollection(tap) {
     }
 }
 
-//새 포스트 작성 일단 { area, genre, title, content,url  }
+//새 포스트 작성 일단 {userId,area, genre, title, content,url,tap }
 //이후에 author(작성자 닉네임 등), comment(댓글) 추가
 //likes, views 등 추가할수도? 논의 필요
+//views 및 userId 추가
 async function createPost(payload, tap) {
     const doc = {
         ...payload,
         views: 0,
-        comment:[],
         createdAt: new Date(),
         updatedAt: new Date(),
     }
@@ -78,16 +79,25 @@ async function deletePost(payload,tap) {
     const result = await selectCollection(tap).deleteOne({ _id: new ObjectId(payload["id"]) });
     return { result };
 }
+
 async function updateView(postId,tap) {//{글의 id}  views++
     const result = await selectCollection(tap).findByIdAndUpdate(postId, { $inc: { views: 1 } });
     return result;
 }
-async function updateComment(payload,tap) {//postId, userId, text
-    const { postId,userId,text } = payload;
-    result = await selectCollection(tap).updateOne(
-    { _id: new ObjectId(postId) },
-    { $push: { comments: { userId, text, updatedAt: new Date() } } }
-  );
+async function createComment(payload) {//postId, userId, text
+    const doc = {
+        ...payload,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    }
+    result = await _comment().insertOne(doc);
+    return result;
+}
+async function getComment(payload) {//postId
+    const postId = new ObjectId(payload.postId);
+    const query = {};
+    query.postId = postId;
+    const result = await _comment().find(query).toArray();
     return result;
 }
 //router에서 호출할 함수들은 여기에 포함해야됨
@@ -96,5 +106,6 @@ module.exports = {
     getPost,
     getFilteredPost,
     updateView,
-    updateComment
+    createComment,
+    getComment
 }
