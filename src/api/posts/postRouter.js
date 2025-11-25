@@ -61,6 +61,7 @@ router.get('/api/post/getByArea', async (req, res) => { //page limit gerne area
         res.status(500).json({ error: 'Error get post' });
     }
 });
+//댓글 작성
 router.post('/api/post/:id/comment', async (req, res) => {//postId, userId,text,parentId
     try {
         const postId = req.params.id;
@@ -74,11 +75,12 @@ router.post('/api/post/:id/comment', async (req, res) => {//postId, userId,text,
         const result = await postService.createComment(payload);
         res.status(201).json(result);
     } catch (error) {
-        console.error('Error creating post:', error);
-        res.status(500).json({ error: 'Error creating post' });
+        console.error('Error creating comment:', error);
+        res.status(500).json({ error: 'Error creating comment' });
     }
 });
-router.get('/api/post/:id/comment', async (req, res) => {//postId, userId,text,parentId
+//댓글 가져오기
+router.get('/api/post/:id/comment', async (req, res) => {//postId
     try {
         const postId = req.params.id;
         if (!postId) {
@@ -88,22 +90,57 @@ router.get('/api/post/:id/comment', async (req, res) => {//postId, userId,text,p
         const result = await postService.getComment(payload);
         res.status(201).json(result);
     } catch (error) {
-        console.error('Error creating post:', error);
-        res.status(500).json({ error: 'Error creating post' });
+        console.error('Error get comment:', error);
+        res.status(500).json({ error: 'Error get comment' });
     }
 });
+//view 증가
 router.get('/api/post/:id/views', async (req, res) => { //postId tap
     try {
         const postId = req.params.id
-        const tap = req.body.tap;
+        const tap = req.query.tap;
         if (!postId||!tap) {
             return res.status(400).json({ error: 'Missing required query parameters' });
         }
         const result = await postService.updateView(postId, tap);
-        res.status(201).json(result);
+        res.status(200).json(result);
     } catch (error) {
         console.error('Error get post:', error);
         res.status(500).json({ error: 'Error get post' });
+    }
+});
+
+//댓글 삭제
+router.post('/api/post/:id/commentdelete', async (req, res) => {//_id(댓글), userId
+    try {
+        const id = req.params.id;
+        const userId = req.body.userId;
+        if (!id ||!userId) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        const payload = {id,userId}
+        const result = await postService.deleteComment(payload);
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).json({ error: 'Error deleting comment' });
+    }
+});
+//게시글 삭제
+router.post('/api/post/:id/postdelete', async (req, res) => {//postId, userId
+    try {
+        const id = req.params.id;
+        const userId = req.body.userId; 
+        const tap = req.body.tap;
+        if (!id ||!userId ||!tap) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        const payload = {id,userId}
+        const result = await postService.deletePost(payload,tap);
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        res.status(500).json({ error: 'Error deleting post' });
     }
 });
 module.exports = router;

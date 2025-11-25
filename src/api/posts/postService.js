@@ -72,31 +72,47 @@ async function getFilteredPost(payload, tap) {
     return result;
 }
 
-//글 삭제 id author (테스트 안해봤습니다)
+//글 삭제 id userId (테스트 안해봤습니다)
 async function deletePost(payload,tap) {
-    const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload["id"]) });
-    //if(post["author"] !== payload["author"]){return {error: can't delete}}
-    const result = await selectCollection(tap).deleteOne({ _id: new ObjectId(payload["id"]) });
+    const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload.id) });
+    if(post.userId !== payload.userId){return {error: "can't delete"}}
+    const result = await selectCollection(tap).deleteOne({ _id: new ObjectId(payload.id) });
+    //관련댓글 삭제
+    // const comment = await _comment().deleteMany({ postId: new ObjectId(payload.id) });
     return { result };
 }
-
+//조회수 증가
 async function updateView(postId,tap) {//{글의 id}  views++
-    const result = await selectCollection(tap).findByIdAndUpdate(postId, { $inc: { views: 1 } });
-    return result;
+    const id = new ObjectId(postId)
+    const result = await selectCollection(tap).updateOne({ _id:id },{ $inc: { views: 1 } });
+    const post = await selectCollection(tap).findOne({ _id: id});
+    return post;
 }
-async function createComment(payload) {//postId, userId, text
+//댓글 생성
+async function createComment(payload) {//postId, userId, text, parentId,isDeleted
     const doc = {
         ...payload,
+        isDeleted: false,
         createdAt: new Date(),
         updatedAt: new Date(),
     }
     result = await _comment().insertOne(doc);
     return result;
 }
-async function getComment(payload) {//postId
-    const postId = new ObjectId(payload.postId);
+//댓글 삭제
+async function deleteComment(payload) { //댓글 _id, userId,
+    const comment = await _comment().findOne({ _id: new ObjectId(payload.id) });
+    if (!comment) {
+        return { error: "Comment not found" };
+    }
+    if(comment.userId !== payload.userId){return {error: "can't delete"};}
+    const result = await _comment().updateOne({ _id: comment._id },{ $set: { isDeleted: true, content: "삭제된 댓글입니다." } });
+    return { result };
+}
+//댓글 조회
+async function getComment(payload) {//postId postId는 ObjectId가 아님
     const query = {};
-    query.postId = postId;
+    query.postId = payload.postId;
     const result = await _comment().find(query).toArray();
     return result;
 }
@@ -107,5 +123,7 @@ module.exports = {
     getFilteredPost,
     updateView,
     createComment,
-    getComment
+    getComment,
+    deleteComment,
+    deletePost,
 }
