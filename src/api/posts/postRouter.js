@@ -123,7 +123,8 @@ router.post('/api/post/:id/commentdelete', async (req, res) => {//_id(댓글), u
         res.status(200).json(result);
     } catch (error) {
         console.error('Error deleting comment:', error);
-        res.status(500).json({ error: 'Error deleting comment' });
+        const status = error.status || 500;
+        res.status(status).json({ error: error.message || 'Error deleting comment' });
     }
 });
 //게시글 삭제
@@ -140,7 +141,8 @@ router.post('/api/post/:id/postdelete', async (req, res) => {//postId, userId
         res.status(201).json(result);
     } catch (error) {
         console.error('Error deleting post:', error);
-        res.status(500).json({ error: 'Error deleting post' });
+        const status = error.status || 500;
+        res.status(status).json({ error: error.message || 'Error deleting comment' });
     }
 });
 module.exports = router;

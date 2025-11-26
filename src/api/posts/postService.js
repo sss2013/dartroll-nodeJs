@@ -72,15 +72,32 @@ async function getFilteredPost(payload, tap) {
     return result;
 }
 
-//글 삭제 id userId (테스트 안해봤습니다)
+//글 삭제 id userId, tap
 async function deletePost(payload,tap) {
     const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload.id) });
-    if(post.userId !== payload.userId){return {error: "can't delete"}}
+    if(post.userId !== payload.userId){
+        const err = new Error("Forbidden");
+        err.status = 403;
+        throw err;
+    }
     const result = await selectCollection(tap).deleteOne({ _id: new ObjectId(payload.id) });
     //관련댓글 삭제
     // const comment = await _comment().deleteMany({ postId: new ObjectId(payload.id) });
     return { result };
 }
+
+//글 수정 id userId,tap
+async function modifyPost(payload,tap) {
+    const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload.id) });
+    if(post.userId !== payload.userId){
+        const err = new Error("Forbidden");
+        err.status = 403;
+        throw err;
+    }
+    const result = await selectCollection(tap).updateOne({ _id: post._id },{ $set: { content: payload.content,updatedAt: new Date()} });
+    return { result };
+}
+
 //조회수 증가
 async function updateView(postId,tap) {//{글의 id}  views++
     const id = new ObjectId(postId)
@@ -103,9 +120,15 @@ async function createComment(payload) {//postId, userId, text, parentId,isDelete
 async function deleteComment(payload) { //댓글 _id, userId,
     const comment = await _comment().findOne({ _id: new ObjectId(payload.id) });
     if (!comment) {
-        return { error: "Comment not found" };
+        const err = new Error("Not Found");
+        err.status = 404;
+        throw err;
     }
-    if(comment.userId !== payload.userId){return {error: "can't delete"};}
+    if(comment.userId !== payload.userId){
+        const err = new Error("Forbidden");
+        err.status = 403;
+        throw err;
+    }
     const result = await _comment().updateOne({ _id: comment._id },{ $set: { isDeleted: true, content: "삭제된 댓글입니다." } });
     return { result };
 }
@@ -126,4 +149,5 @@ module.exports = {
     getComment,
     deleteComment,
     deletePost,
+    modifyPost
 }
