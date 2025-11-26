@@ -25,14 +25,14 @@ router.post('/api/auth/exchange', async (req, res) => {
         }
         return res.status(200).json(result);
     } catch (err) {
-        console.error('Exchange error:',err);
+        console.error('Exchange error:', err);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-router.post('/api/auth/refresh',async(req,res)=>{
-    const {refreshToken} = req.body;
-    if (!refreshToken) return res.status(400).json({error:'missing refresh token'});
+router.post('/api/auth/refresh', async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(400).json({ error: 'missing refresh token' });
 
     try {
         const result = await authService.refreshServerToken(refreshToken);

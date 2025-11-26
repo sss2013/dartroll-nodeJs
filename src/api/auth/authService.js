@@ -31,9 +31,9 @@ const ENC_KEY = process.env.TOKEN_ENC_KEY;
 async function getProviderUserId(provider, accessToken) {
     try {
         let url;
-        if (provider === 'kakao')
+        if (provider === 'Kakao')
             url = 'https://kapi.kakao.com/v2/user/me';
-        else if (provider === 'naver')
+        else if (provider === 'Naver')
             url = 'https://openapi.naver.com/v1/nid/me';
         else throw new Error('Unsupported provider');
 
