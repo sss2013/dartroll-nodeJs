@@ -145,4 +145,24 @@ router.post('/api/post/:id/postdelete', async (req, res) => {//postId, userId
         res.status(status).json({ error: error.message || 'Error deleting comment' });
     }
 });
+
+//게시글 수정
+router.post('/api/post/:id/postmodify', async (req, res) => {//postId, userId
+    try {
+        const id = req.params.id;
+        const userId = req.body.userId; 
+        const tap = req.body.tap;
+        const content = req.body.content;
+        if (!id ||!userId ||!tap||!content) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        const payload = {id,userId,content}
+        const result = await postService.modifyPost(payload,tap);
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        const status = error.status || 500;
+        res.status(status).json({ error: error.message || 'Error deleting comment' });
+    }
+});
 module.exports = router;
