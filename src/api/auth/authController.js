@@ -1,6 +1,4 @@
 const express = require('express');
-const axios = require('axios');
-const supabase = require('../../config/supaClient');
 const router = express.Router();
 const authService = require('./authService');
 
@@ -14,93 +12,37 @@ router.get('/config', (req, res) => {
     })
 })
 
-//유저의 카카오 로그인
-router.post('/api/auth/SignIn', async (req, res) => {
-    const { provider, accessToken, refreshToken, accessExpiresAt, refreshExpiresAt } = req.body;
+router.post('/api/auth/exchange', async (req, res) => {
+    const { provider, accessToken } = req.body;
 
-    if (!accessToken) return res.status(400).json({ error: 'missing Access Token' });
+    if (!provider || !accessToken) return res.status(400).json({ error: 'missing parameters' });
 
-    const result =
-        await authService.handleSignUp(accessToken, refreshToken, accessExpiresAt, refreshExpiresAt, provider);
-
-    res.json(result);
-});
-
-//프로필 입력 & 변경
-router.post('/api/auth/profile', async (req, res) => {
-    const { access_token, provider, name, birthdate, categories, regions } = req.body;
-
-    if (!name || !birthdate || !categories || !regions) {
-        return res.status(400).json({ error: 'missing parameters' });
-    }
-
-    const userId = await authService.checkId(provider, access_token);
-    if (!userId) {
-        return res.status(400).json({ error: 'invalid access token' });
-    }
-
-    const result = await authService.profileSetup(userId, provider, name, birthdate, categories, regions);
-    res.json(result);
-})
-
-//유저의 정보 입력 상태 확인
-router.get('/api/user/status', async (req, res) => {
-    const { access_token, provider } = req.query;
-    if (!provider || !access_token) {
-        return res.status(400).json({ error: 'missing parameters' });
-    }
-
-    const userId = await authService.checkId(provider, access_token);
-    if (!userId) {
-        return res.status(400).json({ error: 'invalid access token' });
-    }
-
-    const result = await authService.checkInput(userId, provider);
-    res.json(result);
-})
-
-router.post('/api/auth/checkToken', async (req, res) => {
-    const { provider, localTime, accessToken, expiresAt } = req.body;
-    if (!provider || !localTime || !accessToken || !expiresAt) {
-        return res.status(400).json({ error: 'missing parameters' });
-    }
     try {
-        const timeCheck = await authService.checkTime(localTime);
-        if (timeCheck.status !== 200) {
-            return res.status(timeCheck.status).json({ error: timeCheck.error });
+        // authService.exchangeSocialToken 함수 시그니처에 맞게 파라미터 수정
+        const result = await authService.exchangeSocialToken(provider, accessToken);
+        if (result.error) {
+            return res.status(result.status || 400).json({ error: result.error });
         }
-
-        const tokenCheck = await authService.checkToken(provider, accessToken, expiresAt);
-
-        return res.status(tokenCheck.status).json(tokenCheck);
+        return res.status(200).json(result);
     } catch (err) {
-        console.error('Error during token check:', err);
+        console.error('Exchange error:',err);
         return res.status(500).json({ error: 'Internal server error' });
     }
-})
+});
 
-router.post('/api/auth/refresh', async (req, res) => {
-    const { accessToken, provider } = req.body;
-    if (!accessToken || !provider) return res.status(400).json({ error: 'missing parameters' });
+router.post('/api/auth/refresh',async(req,res)=>{
+    const {refreshToken} = req.body;
+    if (!refreshToken) return res.status(400).json({error:'missing refresh token'});
 
     try {
-        const tokenRow = await authService.findTokenRowByAccess(provider, accessToken);
-        if (!tokenRow) {
-            console.log('Token not found for refresh:', { provider, accessToken });
-            return res.status(400).json({ error: 'token not found' });
+        const result = await authService.refreshServerToken(refreshToken);
+        // result가 null일 경우(토큰 무효)를 먼저 체크
+        if (!result) {
+            return res.status(401).json({ error: 'Invalid or expired refresh token' });
         }
-
-        const result = await authService.refresh(provider, tokenRow);
-        if (result.error) {
-            console.log('Refresh error:', result.error);
-            const status = result.status || 500;
-            return res.status(status).json({ error: result.error });
-        }
-
-        console.log(result);
-        return res.status(result.status).json(result);
-    } catch (error) {
-        console.error('Error during token refresh:', error);
+        return res.status(200).json(result);
+    } catch (err) {
+        console.error('Refresh error:', err);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
