@@ -40,7 +40,7 @@ async function getProviderUserId(provider, accessToken) {
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
-        return provider === 'kakao' ? String(response.data.id) : response.data.response.id;
+        return provider === 'Kakao' ? String(response.data.id) : response.data.response.id;
     } catch (error) {
         console.error('Error fetching user ID from provider:', error.response?.data || error.message);
         return null;
