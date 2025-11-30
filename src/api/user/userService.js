@@ -6,7 +6,7 @@ async function saveProfile(userId, name, birth, categories, regions) {
     try {
         const { error } = await supabase
             .from('users')
-            .upsert({
+            .update({
                 id: userId,
                 name: name,
                 birth: birth,
