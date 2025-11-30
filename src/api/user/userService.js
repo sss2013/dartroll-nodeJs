@@ -12,7 +12,7 @@ async function saveProfile(userId, name, birth, categories, regions) {
                 birth: birth,
                 categories: categories,
                 regions: regions,
-                isComplete: true
+                inputComplete: true
             })
             .eq('id', userId);
 
