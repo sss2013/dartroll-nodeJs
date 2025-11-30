@@ -6,12 +6,11 @@ const authenticateToken = require('../../middleware/authenticateToken');
 router.post('/api/user/saveProfile', authenticateToken, async (req, res) => {
     const { name, birth, categories, regions } = req.body;
     const user = req.user;
-    birth = parseInt(birth, 10);
+    const parsedBirth = parseInt(birth, 10);
 
     if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
 
-    if (!name || !birth || !categories || !regions) return res.status(400).json({ error: 'missing required fields' });
-
+    if (!name || !parsedBirth || !categories || !regions) return res.status(400).json({ error: 'missing required fields' });
     try {
         const result = await userService.saveProfile(user.id, name, birth, categories, regions);
         if (!result.success) {
