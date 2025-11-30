@@ -47,6 +47,26 @@ async function getProviderUserId(provider, accessToken) {
     }
 }
 
+async function getUser(token) {
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const { data: user, error } = await supabase
+            .from('users')
+            .select()
+            .eq('id', decoded.id)
+            .single();
+
+        if (!user || error) {
+            console.error('Get user error:', error);
+            return null;
+        }
+        return user;
+    } catch (error) {
+        console.error('Error getting user:', error.message);
+        return null;
+    }
+}
+
 function generateServerTokens(user) {
     const payload = { id: user.id, provider: user.provider };
 
@@ -87,17 +107,11 @@ async function exchangeSocialToken(provider, socialAccessToken) {
     return serverTokens;
 }
 
-
 async function refreshServerToken(token) {
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const { data: user, error } = await supabase
-            .from('users')
-            .select()
-            .eq('id', decoded.id)
-            .single();
+        const user = await getUser(token);
 
-        if (error || !user) return null;
+        if (!user) return null;
 
         return generateServerTokens(user);
     } catch (error) {
