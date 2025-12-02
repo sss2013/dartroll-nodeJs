@@ -28,6 +28,43 @@ async function saveProfile(userId, name, birth, categories, regions) {
     }
 }
 
+async function loadUserData(userId, option) {
+    let selectFields = '';
+    try {
+        switch (option) {
+            case 'name':
+                selectFields = 'name';
+                break;
+            case 'preferences':
+                selectFields = 'categories, regions';
+                break;
+            case 'all':
+                selectFields = 'name, birth, categories, regions, inputComplete';
+                break;
+            default:
+                selectFields = '*';
+                break;
+        }
+        const { data, error } = await supabase
+            .from('users')
+            .select(selectFields)
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            console.error('Load user data error:', error);
+            return { success: false, error };
+        } else {
+            return { success: true, data};
+        }
+    } catch (err) {
+        console.error('Load user data exception:', err);
+        return { success: false, error: err };
+    }
+}
+
+
 module.exports = {
-    saveProfile
+    saveProfile,
+    loadUserData
 };

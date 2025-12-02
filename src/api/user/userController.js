@@ -24,4 +24,39 @@ router.post('/api/user/saveProfile', authenticateToken, async (req, res) => {
     }
 });
 
+router.get('/api/user/loadUserAll', authenticateToken, async (req, res) => {
+    const user = req.user;
+
+    if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+
+    try {
+        const result = await userService.loadUserData(user.id, 'all');
+        if (!result.success) {
+            console.log('Load user data failed:', result.error);
+            return res.status(500).json({ error: 'Failed to load user data' });
+        }
+        return res.status(200).json(result.data);
+    } catch (err) {
+        console.error('Load user data error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.get('/api/user/loadUserName', authenticateToken, async (req, res) => {
+    const user = req.user;
+    if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+    try {
+        const result = await userService.loadUserData(user.id, 'name');
+        if (!result.success) {
+            console.log('Load user name failed:', result.error);
+            return res.status(500).json({ error: 'Failed to load user name' });
+        }
+        return res.status(200).json(result.data);
+    } catch (err) {
+        console.error('Load user name error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 module.exports = router;
