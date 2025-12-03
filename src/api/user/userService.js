@@ -32,14 +32,8 @@ async function loadUserData(userId, option) {
     let selectFields = '';
     try {
         switch (option) {
-            case 'name':
+            case 1:
                 selectFields = 'name';
-                break;
-            case 'preferences':
-                selectFields = 'categories, regions';
-                break;
-            case 'all':
-                selectFields = 'name, birth, categories, regions, inputComplete';
                 break;
             default:
                 selectFields = '*';
@@ -55,7 +49,7 @@ async function loadUserData(userId, option) {
             console.error('Load user data error:', error);
             return { success: false, error };
         } else {
-            return { success: true, data};
+            return { success: true, data };
         }
     } catch (err) {
         console.error('Load user data exception:', err);
