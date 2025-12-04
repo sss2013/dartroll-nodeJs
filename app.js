@@ -8,6 +8,7 @@ const authRouter = require('./src/api/auth/authController');
 const eventRouter = require('./src/api/event/eventRouter');
 const postRouter = require('./src/api/posts/postRouter');
 const userRouter = require('./src/api/user/userController');
+const syncRoutes = require('./src/api/sync/syncRoute');
 
 const { connectMongo } = require('./src/config/mongoClient');
 const { client: redisClient, connectRedis, quitRedis } = require('./src/config/redisClient');
@@ -18,6 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(authRouter);
 app.use(eventRouter);
 app.use(userRouter);
+app.use('/api/sync', syncRoutes);
 
 async function startServer() {
     try {
