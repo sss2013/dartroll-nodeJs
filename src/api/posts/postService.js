@@ -4,7 +4,6 @@ const { MongoClient, getCollection } = require('../../config/mongoClient');
 const { updateLocale } = require('moment');
 const dayjs = require('dayjs');
 
-
 // 각 함수는 예외를 던지므로 호출에서 try-catch로 처리해야 합니다.
 // DB의 review 테이블(컬렉션) 참조하는 함수
 function _review() {
@@ -39,10 +38,11 @@ async function createPost(payload, tap) {
     const doc = {
         ...payload,
         views: 0,
+        report:[],
+        like:[],
         createdAt: new Date(),
         updatedAt: new Date(),
     }
-
     const result = await selectCollection(tap).insertOne(doc);
     return { id: result.insertedId };
 }
@@ -96,7 +96,7 @@ async function modifyPost(payload,tap) {
         throw err;
     }
     const result = await selectCollection(tap).updateOne({ _id: post._id },{ $set: { content: payload.content,updatedAt: new Date()} });
-    return { result };
+    return { success: true };
 }
 
 //조회수 증가
@@ -104,13 +104,46 @@ async function updateView(postId,tap) {//{글의 id}  views++
     const id = new ObjectId(postId)
     const result = await selectCollection(tap).updateOne({ _id:id },{ $inc: { views: 1 } });
     const post = await selectCollection(tap).findOne({ _id: id});
-    return post;
+    return {success: true,views: post.views};
+}
+//게시글 좋아요
+async function likePost(payload,tap) {
+    let liked = false
+    const id = new ObjectId(payload.postId)
+    const post = await selectCollection(tap).findOne({ _id: id});
+    if(post.like.includes(payload.userId)){
+        await selectCollection(tap).updateOne({ _id:id },{ $pull: { like: payload.userId } });
+        liked = false
+    }
+    else{
+        await selectCollection(tap).updateOne({ _id:id },{ $push: { like: payload.userId } });
+        liked = true
+    }  
+    const result = await selectCollection(tap).findOne({ _id: id});
+    return {liked,likeCount:result.like?.length??0};
+}
+//게시글 신고
+async function reportPost(payload,tap) {//{글의 id}
+    let repoted = false
+    const id = new ObjectId(payload.postId)
+    const post = await selectCollection(tap).findOne({ _id: id});
+    if(post.report.includes(payload.userId)){
+        repoted = false
+    }
+    else{
+        await selectCollection(tap).updateOne({ _id:id },{ $push: { report: payload.userId } });
+        repoted = true
+    }  
+    const result = await selectCollection(tap).findOne({ _id: id});
+    return {repoted,repoteCount:result.report?.length??0};
 }
 //댓글 생성
 async function createComment(payload) {//postId, userId, text, parentId,isDeleted
     const doc = {
         ...payload,
         isDeleted: false,
+        report:[],
+        like:[],
         createdAt: new Date(),
         updatedAt: new Date(),
     }
@@ -130,8 +163,24 @@ async function deleteComment(payload) { //댓글 _id, userId,
         err.status = 403;
         throw err;
     }
-    const result = await _comment().updateOne({ _id: comment._id },{ $set: { isDeleted: true, content: "삭제된 댓글입니다." } });
-    return { result };
+    await _comment().updateOne({ _id: comment._id },{ $set: { isDeleted: true, content: "삭제된 댓글입니다." } });
+    return { success: true };
+}
+//댓글 좋아요
+async function likeComment(payload) {
+    let liked = false;
+    const id = new ObjectId(payload.commentId)
+    const post = await _comment().findOne({ _id: id});
+    if(post.like.includes(payload.userId)){
+        await _comment().updateOne({ _id:id },{ $pull: { like: payload.userId } });
+        liked = false;
+    }
+    else{
+        await _comment().updateOne({ _id:id },{ $push: { like: payload.userId } });
+        liked = true;
+    }  
+    const result = await _comment().findOne({ _id: id});
+    return {liked,likeCount:result.like?.length??0};
 }
 //댓글 조회
 async function getComment(payload) {//postId postId는 ObjectId가 아님
@@ -140,10 +189,31 @@ async function getComment(payload) {//postId postId는 ObjectId가 아님
     const result = await _comment().find(query).toArray();
     return result;
 }
-//하나만 가져오기
-async function getOne(payload,tap) {//postId postId는 ObjectId가 아님
-    const result = await selectCollection(tap).findOne({ _id: new ObjectId(payload.postId) });
-    return result;
+//댓글 신고
+async function reportComment(payload) {//{댓글 id} 
+    const id = new ObjectId(payload.commentId)
+    let reported = false
+    const comment = await _comment().findOne({ _id: id});
+    if(comment.report.includes(payload.userId)){
+        reported = false
+    }
+    else{
+        await _comment.updateOne({ _id:id },{ $push: { report: payload.userId } });
+        reported = true
+    }  
+    const result = await _comment().findOne({ _id: id});
+    return {repoted,repoteCount:result.report?.length??0};;
+}
+//댓글 수정 댓글id, userId, text
+async function modifyComment(payload) {
+    const comment = await _comment().findOne({ _id: new ObjectId(payload.id) });
+    if(comment.userId !== payload.userId){
+        const err = new Error("Forbidden");
+        err.status = 403;
+        throw err;
+    }
+    await _comment().updateOne({ _id: comment._id },{ $set: { text: payload.text,updatedAt: new Date()} });
+    return { success: true };
 }
 //router에서 호출할 함수들은 여기에 포함해야됨
 module.exports = {
@@ -156,5 +226,9 @@ module.exports = {
     deleteComment,
     deletePost,
     modifyPost,
-    getOne
+    //modifyComment,
+    reportComment,
+    likeComment,
+    reportPost,
+    likePost
 }

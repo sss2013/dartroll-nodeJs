@@ -171,25 +171,119 @@ router.post('/api/post/:id/postmodify',authenticateToken, async (req, res) => {/
         const result = await postService.modifyPost(payload,tap);
         res.status(201).json(result);
     } catch (error) {
-        console.error('Error deleting post:', error);
+        console.error('Error modify post:', error);
         const status = error.status || 500;
-        res.status(status).json({ error: error.message || 'Error deleting comment' });
+        res.status(status).json({ error: error.message || 'Error modify post' });
     }
 });
 //게시글 하나 가져오기
-router.get('/api/post/:id', async (req, res) => {//postId
+// router.get('/api/post/:id', async (req, res) => {//postId
+//     try {
+//         const postId = req.params.id;
+//         const tap = req.query.tap;
+//         if (!postId||!tap) {
+//             return res.status(400).json({ error: 'Missing required fields' });
+//         }
+//         const payload = {postId}
+//         const result = await postService.getOne(payload,tap);
+//         res.status(201).json(result);
+//     } catch (error) {
+//         console.error('Error get comment:', error);
+//         res.status(500).json({ error: 'Error get post' });
+//     }
+// });
+//게시글 신고
+router.post('/api/post/:id/report', authenticateToken,async (req, res) => { //postId, userId, tap
     try {
-        const postId = req.params.id;
+        const user = req.user;
+        const userId = user.id;
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+        const postId = req.params.id
         const tap = req.body.tap;
         if (!postId||!tap) {
-            return res.status(400).json({ error: 'Missing required fields' });
+            return res.status(400).json({ error: 'Missing required query parameters' });
         }
-        const payload = {postId}
-        const result = await postService.getOne(payload,tap);
-        res.status(201).json(result);
+        const payload = {userId,postId}
+        const result = await postService.reportPost(payload, tap);
+        res.status(200).json(result);
     } catch (error) {
-        console.error('Error get comment:', error);
-        res.status(500).json({ error: 'Error get comment' });
+        console.error('Error report post:', error);
+        res.status(500).json({ error: 'Error report post' });
     }
 });
+//게시글 좋아요
+router.post('/api/post/:id/like', authenticateToken,async (req, res) => { //postId, userId, tap
+    try {
+        const user = req.user;
+        const userId = user.id;
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+        const postId = req.params.id
+        const tap = req.body.tap;
+        if (!postId||!tap) {
+            return res.status(400).json({ error: 'Missing required query parameters' });
+        }
+        const payload = {userId,postId}
+        const result = await postService.likePost(payload, tap);
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error report post:', error);
+        res.status(500).json({ error: 'Error report post' });
+    }
+});
+//댓글 신고
+router.post('/api/post/:id/commentreport', authenticateToken,async (req, res) => { //postId, userId, tap
+    try {
+        const user = req.user;
+        const userId = user.id;
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+        const commentId = req.params.id
+        if (!commentId) {
+            return res.status(400).json({ error: 'Missing required query parameters' });
+        }
+        const payload = {userId,commentId}
+        const result = await postService.reportComment(payload);
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error report post:', error);
+        res.status(500).json({ error: 'Error report post' });
+    }
+});
+//댓글 좋아요
+router.post('/api/post/:id/commentlike', authenticateToken,async (req, res) => { //postId, userId, tap
+    try {
+        const user = req.user;
+        const userId = user.id;
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+        const commentId = req.params.id
+        if (!commentId) {
+            return res.status(400).json({ error: 'Missing required query parameters' });
+        }
+        const payload = {userId,commentId}
+        const result = await postService.likeComment(payload);
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error report post:', error);
+        res.status(500).json({ error: 'Error report post' });
+    }
+});
+//댓글 수정
+// router.post('/api/post/:id/commentmodify',authenticateToken, async (req, res) => {//댓글Id, userId
+//     try {
+//         const id = req.params.id;
+//         const user = req.user;
+//         const userId = user.id;
+//         if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+//         const text = req.body.text;
+//         if (!id ||!text) {
+//             return res.status(400).json({ error: 'Missing required fields' });
+//         }
+//         const payload = {id,userId,text}
+//         const result = await postService.modifyComment(payload);
+//         res.status(201).json(result);
+//     } catch (error) {
+//         console.error('Error modify comment:', error);
+//         const status = error.status || 500;
+//         res.status(status).json({ error: error.message || 'Error modify comment' });
+//     }
+// });
 module.exports = router;
