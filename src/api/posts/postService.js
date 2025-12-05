@@ -4,6 +4,7 @@ const { MongoClient, getCollection } = require('../../config/mongoClient');
 const { updateLocale } = require('moment');
 const dayjs = require('dayjs');
 
+
 // 각 함수는 예외를 던지므로 호출에서 try-catch로 처리해야 합니다.
 // DB의 review 테이블(컬렉션) 참조하는 함수
 function _review() {
@@ -139,6 +140,11 @@ async function getComment(payload) {//postId postId는 ObjectId가 아님
     const result = await _comment().find(query).toArray();
     return result;
 }
+//하나만 가져오기
+async function getOne(payload,tap) {//postId postId는 ObjectId가 아님
+    const result = await selectCollection(tap).findOne({ _id: new ObjectId(payload.postId) });
+    return result;
+}
 //router에서 호출할 함수들은 여기에 포함해야됨
 module.exports = {
     createPost,
@@ -149,5 +155,6 @@ module.exports = {
     getComment,
     deleteComment,
     deletePost,
-    modifyPost
+    modifyPost,
+    getOne
 }

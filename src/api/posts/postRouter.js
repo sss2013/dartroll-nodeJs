@@ -1,17 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const postService = require('./postService');
-
-router.post('/api/post/upload', async (req, res) => {
+const authenticateToken = require('../../middleware/authenticateToken');
+router.post('/api/post/upload',authenticateToken, async (req, res) => {
     try {
+        const user = req.user;
         const title = req.body.title;
-        const userId = req.body.userId;
+        const userId = user.id;
         const area = req.body.area;
         const genre = req.body.genre;
         const content = req.body.content;
         const url = req.body.url;
-        const tap = req.body.tap; //review인지 matching인지 구분    
-        if (!title || !area || !genre || !content || !url || !tap||!userId) {
+        const tap = req.body.tap; //review인지 matching인지 구분  
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });  
+        if (!title || !area || !genre || !content || !url || !tap) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         const payload = { title, area, genre, content, url,userId };
@@ -62,10 +64,12 @@ router.get('/api/post/getByArea', async (req, res) => { //page limit gerne area
     }
 });
 //댓글 작성
-router.post('/api/post/:id/comment', async (req, res) => {//postId, userId,text,parentId
+router.post('/api/post/:id/comment',authenticateToken, async (req, res) => {//postId, userId,text,parentId
     try {
+        const user = req.user;
+        const userId = user.id;
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
         const postId = req.params.id;
-        const userId = req.body.userId;
         const text = req.body.text;
         const parentId = req.body.parentId || null; 
         if (!postId ||!userId ||!text) {
@@ -94,6 +98,7 @@ router.get('/api/post/:id/comment', async (req, res) => {//postId
         res.status(500).json({ error: 'Error get comment' });
     }
 });
+
 //view 증가
 router.get('/api/post/:id/views', async (req, res) => { //postId tap
     try {
@@ -111,11 +116,13 @@ router.get('/api/post/:id/views', async (req, res) => { //postId tap
 });
 
 //댓글 삭제
-router.post('/api/post/:id/commentdelete', async (req, res) => {//_id(댓글), userId
+router.post('/api/post/:id/commentdelete',authenticateToken, async (req, res) => {//_id(댓글), userId
     try {
+        const user = req.user;
+        const userId = user.id;
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
         const id = req.params.id;
-        const userId = req.body.userId;
-        if (!id ||!userId) {
+        if (!id) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         const payload = {id,userId}
@@ -128,10 +135,12 @@ router.post('/api/post/:id/commentdelete', async (req, res) => {//_id(댓글), u
     }
 });
 //게시글 삭제
-router.post('/api/post/:id/postdelete', async (req, res) => {//postId, userId
+router.post('/api/post/:id/postdelete',authenticateToken, async (req, res) => {//postId, userId
     try {
+        const user = req.user;
+        const userId = user.id;
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
         const id = req.params.id;
-        const userId = req.body.userId; 
         const tap = req.body.tap;
         if (!id ||!userId ||!tap) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -147,10 +156,12 @@ router.post('/api/post/:id/postdelete', async (req, res) => {//postId, userId
 });
 
 //게시글 수정
-router.post('/api/post/:id/postmodify', async (req, res) => {//postId, userId
+router.post('/api/post/:id/postmodify',authenticateToken, async (req, res) => {//postId, userId
     try {
         const id = req.params.id;
-        const userId = req.body.userId; 
+        const user = req.user;
+        const userId = user.id;
+        if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
         const tap = req.body.tap;
         const content = req.body.content;
         if (!id ||!userId ||!tap||!content) {
@@ -163,6 +174,22 @@ router.post('/api/post/:id/postmodify', async (req, res) => {//postId, userId
         console.error('Error deleting post:', error);
         const status = error.status || 500;
         res.status(status).json({ error: error.message || 'Error deleting comment' });
+    }
+});
+//게시글 하나 가져오기
+router.get('/api/post/:id', async (req, res) => {//postId
+    try {
+        const postId = req.params.id;
+        const tap = req.body.tap;
+        if (!postId||!tap) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        const payload = {postId}
+        const result = await postService.getOne(payload,tap);
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Error get comment:', error);
+        res.status(500).json({ error: 'Error get comment' });
     }
 });
 module.exports = router;
