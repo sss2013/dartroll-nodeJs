@@ -62,11 +62,9 @@ router.get('/api/auth/kakao/callback', async (req,res)=> {
             return res.redirect(`http://${front_url}/login-failed?error=${serverTokens.error}`);
         }
         const accessToken = serverTokens.access.token;
-const refreshToken = serverTokens.refresh.token;
+        const refreshToken = serverTokens.refresh.token;
 
-res.redirect(`http://${front_url}/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
-        
-        res.redirect(`http://${front_url}/login-success?accessToken=${serverTokens.accessToken}&refreshToken=${serverTokens.refreshToken}`);
+        res.redirect(`http://${front_url}/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
     } catch(err){
     console.error('Kakao web callback error:', err.response ? err.response.data : err.message);
         return res.redirect(`http://${front_url}/login-failed?error=server_error`);
