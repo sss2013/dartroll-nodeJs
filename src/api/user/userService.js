@@ -28,11 +28,11 @@ async function saveProfile(userId, name, birth, categories, regions) {
     }
 }
 
-async function loadUserData(userId, option) {
+async function loadUserData(userId, fields) {
     let selectFields = '';
     try {
-        switch (option) {
-            case 1:
+        switch (fields) {
+            case 'name':
                 selectFields = 'name';
                 break;
             default:

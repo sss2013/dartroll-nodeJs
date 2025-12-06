@@ -39,12 +39,12 @@ router.get('/api/user/loadUserId', authenticateToken, async (req, res) => {
 
 router.get('/api/user/loadUserData', authenticateToken, async (req, res) => {
     const user = req.user;
-    const option = req.query.option || 'all';
+    const fields = req.query.fields || '*';
 
     if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
 
     try {
-        const result = await userService.loadUserData(user.id, option);
+        const result = await userService.loadUserData(user.id, fields);
         if (!result.success) {
             console.log('Load user data failed:', result.error);
             return res.status(500).json({ error: 'Failed to load user data' });
