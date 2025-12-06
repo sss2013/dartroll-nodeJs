@@ -61,7 +61,7 @@ router.get('/api/auth/kakao/callback', async (req,res)=> {
         const serverTokens = await authService.exchangeSocialToken('Kakao', socialAccessToken);
         if (serverTokens.error) {
             // authService에서 에러가 발생한 경우
-            return res.redirect(`${front_url}/login-failed?error=${serverTokens.error}`);
+            return res.redirect(`${front_url}/#/login-failed?error=${serverTokens.error}`);
         }
         const accessToken = serverTokens.access.token;
         const accessTokenExpiresIn = serverTokens.access.expiresAt;
@@ -69,8 +69,7 @@ router.get('/api/auth/kakao/callback', async (req,res)=> {
         
         const encodedExpiresAt = encodeURIComponent(accessTokenExpiresIn);
 
-
-        res.redirect(`${front_url}/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}&accessExpiresAt=${encodedExpiresAt}`);
+        res.redirect(`${front_url}/#/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}&accessExpiresAt=${encodedExpiresAt}`);
     } catch(err){
         console.error('Kakao web callback error:', err.response ? err.response.data : err.message);
         return res.redirect(`${front_url}/login-failed?error=server_error`);
