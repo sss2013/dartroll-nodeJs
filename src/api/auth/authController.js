@@ -30,16 +30,48 @@ router.post('/api/auth/exchange', async (req, res) => {
     }
 });
 router.get('/api/auth/kakao/callback', async (req,res)=> {
+    const front_url = process.env.FRONT_END_URL;
+
     const { code } = req.query;
-    if (!code) return res.status(400).json({ error: 'missing code parameter' });
+    if (!code) return res.redirect(`http://${front_url}/login-failed?error=missing_code`);
+
+
+    const KAKAO_REST_API_KEY = process.env.KAKAO_REST_API_KEY;
+    const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI; // 예: https://.../api/auth/kakao/callback
+
     try{
-        console.log('Kakao callback code:', code);
-        return res.status(200).json({ code });
+        const tokenResponse = await axios.post(
+            'https://kauth.kakao.com/oauth/token',
+            null,
+            {
+                headers: { 'Content-type': 'application/x-www-form-urlencoded;charset=utf-8' },
+                params: {
+                    grant_type: 'authorization_code',
+                    client_id: KAKAO_REST_API_KEY,
+                    redirect_uri: KAKAO_REDIRECT_URI,
+                    code: code,
+                }
+            }
+        );
+
+        const socialAccessToken = tokenResponse.data.access_token;
+
+        const serverTokens = await authService.exchangeSocialToken('Kakao', socialAccessToken);
+        if (serverTokens.error) {
+            // authService에서 에러가 발생한 경우
+            return res.redirect(`http://${front_url}/login-failed?error=${serverTokens.error}`);
+        }
+        const accessToken = serverTokens.access.token;
+const refreshToken = serverTokens.refresh.token;
+
+res.redirect(`http://${front_url}/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+        
+        res.redirect(`http://${front_url}/login-success?accessToken=${serverTokens.accessToken}&refreshToken=${serverTokens.refreshToken}`);
     } catch(err){
-        console.error('Kakao callback error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
+    console.error('Kakao web callback error:', err.response ? err.response.data : err.message);
+        return res.redirect(`http://${front_url}/login-failed?error=server_error`);
     }
-});
+});  
 
 router.post('/api/auth/refresh', async (req, res) => {
     const { refreshToken } = req.body;
