@@ -32,11 +32,12 @@ router.post('/api/auth/exchange', async (req, res) => {
 });
 router.get('/api/auth/kakao/callback', async (req,res)=> {
     const front_url = process.env.FRONT_END_URL;
+    console.log(front_url);
 
     const { code } = req.query;
-    if (!code) return res.redirect(`http://${front_url}/login-failed?error=missing_code`);
+    if (!code) return res.redirect(`${front_url}/login-failed?error=missing_code`);
 
-
+    console.log('Kakao callback code:', code);
     const KAKAO_REST_API_KEY = process.env.KAKAO_REST_API_KEY;
     const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI; // 예: https://.../api/auth/kakao/callback
 
@@ -54,21 +55,21 @@ router.get('/api/auth/kakao/callback', async (req,res)=> {
                 }
             }
         );
-
+        console.log('Kakao token response data ok');
         const socialAccessToken = tokenResponse.data.access_token;
 
         const serverTokens = await authService.exchangeSocialToken('Kakao', socialAccessToken);
         if (serverTokens.error) {
             // authService에서 에러가 발생한 경우
-            return res.redirect(`http://${front_url}/login-failed?error=${serverTokens.error}`);
+            return res.redirect(`${front_url}/login-failed?error=${serverTokens.error}`);
         }
         const accessToken = serverTokens.access.token;
         const refreshToken = serverTokens.refresh.token;
 
-        res.redirect(`http://${front_url}/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+        res.redirect(`${front_url}/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}`);
     } catch(err){
-    console.error('Kakao web callback error:', err.response ? err.response.data : err.message);
-        return res.redirect(`http://${front_url}/login-failed?error=server_error`);
+        console.error('Kakao web callback error:', err.response ? err.response.data : err.message);
+        return res.redirect(`${front_url}/login-failed?error=server_error`);
     }
 });  
 
