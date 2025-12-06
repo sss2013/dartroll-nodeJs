@@ -71,15 +71,16 @@ function generateServerTokens(user) {
     const payload = { id: user.id, provider: user.provider };
 
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '30m'
+        expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '30m'
     });
     const refreshToken = jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d'
+        expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN || '7d'
     });
 
     const accessExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
+    const encodedExpiresAt = encodeURIComponent(accessExpiresAt);
+    
     return {
         access: { token: accessToken, expiresAt: accessExpiresAt },
         refresh: { token: refreshToken, expiresAt: refreshExpiresAt }
