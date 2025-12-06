@@ -29,6 +29,17 @@ router.post('/api/auth/exchange', async (req, res) => {
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
+router.get('/api/auth/kakao/callback', async (req,res)=> {
+    const { code } = req.query;
+    if (!code) return res.status(400).json({ error: 'missing code parameter' });
+    try{
+        console.log('Kakao callback code:', code);
+        return res.status(200).json({ code });
+    } catch(err){
+        console.error('Kakao callback error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 router.post('/api/auth/refresh', async (req, res) => {
     const { refreshToken } = req.body;
