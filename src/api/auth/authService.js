@@ -79,7 +79,6 @@ function generateServerTokens(user) {
 
     const accessExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const encodedExpiresAt = encodeURIComponent(accessExpiresAt);
     
     return {
         access: { token: accessToken, expiresAt: accessExpiresAt },
