@@ -54,7 +54,11 @@ async function getPost(payload, tap) {
     const result = await selectCollection(tap).find().skip(skip).limit(limit).toArray(); //최신순으로 바꾸려고 했지만 오류
     return result;
 }
-
+//하나만 가져오기
+async function getOne(payload, tap) {
+    const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload.postId) });
+    return post;
+}
 //장르, 지역별 get요청 {page, limit,area, genre}
 async function getFilteredPost(payload, tap) {
     const page = parseInt(payload["page"]) || 1;
@@ -72,6 +76,7 @@ async function getFilteredPost(payload, tap) {
     const result = await selectCollection(tap).find(query).skip(skip).limit(limit).toArray();
     return result;
 }
+    
 
 //글 삭제 id userId, tap
 async function deletePost(payload,tap) {
@@ -124,18 +129,18 @@ async function likePost(payload,tap) {
 }
 //게시글 신고
 async function reportPost(payload,tap) {//{글의 id}
-    let repoted = false
+    let reported = false
     const id = new ObjectId(payload.postId)
     const post = await selectCollection(tap).findOne({ _id: id});
     if(post.report.includes(payload.userId)){
-        repoted = false
+        reported = false
     }
     else{
         await selectCollection(tap).updateOne({ _id:id },{ $push: { report: payload.userId } });
-        repoted = true
+        reported = true
     }  
     const result = await selectCollection(tap).findOne({ _id: id});
-    return {repoted,repoteCount:result.report?.length??0};
+    return {reported,reportedCount:result.report?.length??0};
 }
 //댓글 생성
 async function createComment(payload) {//postId, userId, text, parentId,isDeleted
@@ -202,7 +207,7 @@ async function reportComment(payload) {//{댓글 id}
         reported = true
     }  
     const result = await _comment().findOne({ _id: id});
-    return {repoted,repoteCount:result.report?.length??0};;
+    return {reported,reportedCount:result.report?.length??0};;
 }
 //댓글 수정 댓글id, userId, text
 async function modifyComment(payload) {
@@ -226,9 +231,10 @@ module.exports = {
     deleteComment,
     deletePost,
     modifyPost,
-    //modifyComment,
+    modifyComment,
     reportComment,
     likeComment,
     reportPost,
-    likePost
+    likePost,
+    getOne
 }
