@@ -22,6 +22,7 @@ const detailMapper = (it) => ({
     price: it.price,
     genre: it.realmName,
     phone: it.phone,
+    likes:0, 
 })
 
 const listMapper = (it) => ({
@@ -34,6 +35,7 @@ const listMapper = (it) => ({
     sigungu: it.sigungu,
     area: it.area,
     thumbnail: it.thumbnail,
+    likes:0, 
 })
 
 
@@ -130,7 +132,7 @@ async function getItems(idxName, firstPages, totalPages) {
                 break;
         }
 
-        const url = 'https://apis.data.go.kr/B553457/cultureinfo/realm2';
+        const url = process.env.EVENT_URL1.concat('/realm2');
         const numOfRows = '10';
 
         for (let pageNo = firstPages; pageNo <= totalPages; pageNo++) {
@@ -159,7 +161,7 @@ async function getItems(idxName, firstPages, totalPages) {
 
 async function getItemDetail(idxName, contentId) {
     try {
-        const url = 'https://apis.data.go.kr/B553457/cultureinfo/detail2';
+        const url = process.env.EVENT_URL1.concat('/detail2');
         const response = await axios.get(url, {
             params: {
                 serviceKey: eventKey,
@@ -320,7 +322,6 @@ async function storeSimpleItems(idxName) {
 }
 
 
-
 //Date 비어있는 값 조회
 async function filterItemsWithDate(limit = 100) {
     try {
@@ -350,6 +351,12 @@ async function filterItemsWithDate(limit = 100) {
     } catch (error) {
         console.error('Error filtering all items from Redis:', error);
     }
+}
+
+async function likeEvent(idxName,eventId){ 
+    const hashKey = `${idxName}:${eventId}`;
+    const newLikes=await redisClient.hIncrBy(hashKey,'likes',1);
+    return newLikes;
 }
 
 module.exports = {

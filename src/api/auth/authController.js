@@ -30,6 +30,8 @@ router.post('/api/auth/exchange', async (req, res) => {
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+//웹 버전 로그인 처리
 router.get('/api/auth/kakao/callback', async (req,res)=> {
     const front_url = process.env.FRONT_END_URL;
     console.log(front_url);

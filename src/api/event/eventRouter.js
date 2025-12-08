@@ -16,6 +16,13 @@ router.get('/api/storeEvent1/', async (req, res) => {
     }
 });
 
+// //관광정보원 지역축제 정보등록
+// router.get('/api/storeEvent2/', async (req, res) => {
+//     const idxName= 'festival';
+
+// });
+    
+
 router.get('/api/storeDetailInfo', async (req, res) => {
     const idxName = req.query.idxName;
 
@@ -93,5 +100,23 @@ router.get('/api/getFilteredFestival', async (req, res) => {
     const result = await eventService.filterItemsWithDate();
     console.log(result);
 });
+
+router.post('/api/likeEvent', async (req, res) => {
+    const {idxName,eventId}= req.body;
+
+    if (!idxName || !eventId){
+        return res.status(400).json({error:'Missing idxName or eventId'});
+    }
+
+    try{
+        const newLikes = await eventService.likeEvent(idxName,eventId);
+        return res.status(200).json({ success:true, eventLikes:newLikes});
+    } catch (error) {
+        console.error('Error in /api/likeEvent:', error);
+        return res.status(500).json({ error: 'Error Processing like request' });
+    }
+
+});
+
 
 module.exports = router;
