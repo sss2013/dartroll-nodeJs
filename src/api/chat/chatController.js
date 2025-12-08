@@ -14,6 +14,7 @@ router.post('/',authenticateToken, async (req, res,next) => {
         const room = await chatService.findOrCreateRoom([currentUserId, otherUserId]);
         return res.status(200).json(room);
     } catch(error){
+        console.error(error);
         next(error);
     }
 });
@@ -45,4 +46,4 @@ router.get('/:roomId/messages', authenticateToken, async (req, res, next) => {
     }
 });
 
-module.exports =   router;
+module.exports = router;
