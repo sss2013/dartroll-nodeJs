@@ -22,7 +22,7 @@ const detailMapper = (it) => ({
     price: it.price,
     genre: it.realmName,
     phone: it.phone,
-    likes:0, 
+    likes: 0
 })
 
 const listMapper = (it) => ({
@@ -35,7 +35,7 @@ const listMapper = (it) => ({
     sigungu: it.sigungu,
     area: it.area,
     thumbnail: it.thumbnail,
-    likes:0, 
+    likes: 0
 })
 
 
