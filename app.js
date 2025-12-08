@@ -36,7 +36,7 @@ const express = require('express');
     // 5. 라우터 등록 (한 곳에서 모두 등록)
     app.use(authRouter);
     app.use(eventRouter);
-    app.use('/api/user', userRouter);
+    app.use(userRouter);
     app.use('/api/sync', syncRoutes);
     app.use(postRouter); // 다른 라우터들과 함께 등록
     app.use('/api/chat', chatRouter);
