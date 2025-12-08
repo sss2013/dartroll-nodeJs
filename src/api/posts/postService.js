@@ -133,6 +133,7 @@ async function reportPost(payload,tap) {//{글의 id}
     const id = new ObjectId(payload.postId)
     const post = await selectCollection(tap).findOne({ _id: id});
     if(post.report.includes(payload.userId)){
+        await selectCollection(tap).updateOne({ _id:id },{ $pull: { report: payload.userId } });
         reported = false
     }
     else{
@@ -200,12 +201,13 @@ async function reportComment(payload) {//{댓글 id}
     let reported = false
     const comment = await _comment().findOne({ _id: id});
     if(comment.report.includes(payload.userId)){
+        await _comment.updateOne({ _id:id },{ $pull: { report: payload.userId } });
         reported = false
     }
     else{
         await _comment.updateOne({ _id:id },{ $push: { report: payload.userId } });
         reported = true
-    }  
+    } 
     const result = await _comment().findOne({ _id: id});
     return {reported,reportedCount:result.report?.length??0};;
 }
