@@ -133,7 +133,6 @@ async function reportPost(payload,tap) {//{글의 id}
     const id = new ObjectId(payload.postId)
     const post = await selectCollection(tap).findOne({ _id: id});
     if(post.report.includes(payload.userId)){
-        await selectCollection(tap).updateOne({ _id:id },{ $pull: { report: payload.userId } });
         reported = false
     }
     else{
@@ -176,8 +175,8 @@ async function deleteComment(payload) { //댓글 _id, userId,
 async function likeComment(payload) {
     let liked = false;
     const id = new ObjectId(payload.commentId)
-    const post = await _comment().findOne({ _id: id});
-    if(post.like.includes(payload.userId)){
+    const comment = await _comment().findOne({ _id: id});
+    if(comment.like.includes(payload.userId)){
         await _comment().updateOne({ _id:id },{ $pull: { like: payload.userId } });
         liked = false;
     }
@@ -201,15 +200,14 @@ async function reportComment(payload) {//{댓글 id}
     let reported = false
     const comment = await _comment().findOne({ _id: id});
     if(comment.report.includes(payload.userId)){
-        await _comment.updateOne({ _id:id },{ $pull: { report: payload.userId } });
         reported = false
     }
     else{
-        await _comment.updateOne({ _id:id },{ $push: { report: payload.userId } });
+        await _comment().updateOne({ _id:id },{ $push: { report: payload.userId } });
         reported = true
     } 
     const result = await _comment().findOne({ _id: id});
-    return {reported,reportedCount:result.report?.length??0};;
+    return {reported,reportedCount:result.report?.length??0}
 }
 //댓글 수정 댓글id, userId, text
 async function modifyComment(payload) {
