@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const postService = require('./postService');
 const authenticateToken = require('../../middleware/authenticateToken');
+
 router.post('/api/post/upload',authenticateToken, async (req, res) => {
     try {
         const user = req.user;

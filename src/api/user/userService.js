@@ -1,6 +1,26 @@
 const axios = require('axios');
 const supabase = require('../../config/supaClient');
+const { MongoClient, getCollection } = require('../../config/mongoClient');
 const jwt = require('jsonwebtoken');
+const { UUID } = require("bson");
+
+// async function tempSave(userId,name){
+//     try{
+//         const usersCollection = getCollection('users');
+//         const mongoUser = await usersCollection.findOne({_id:userId});
+
+//         if(!mongoUser){
+//             await usersCollection.insertOne({
+//                 _id: new UUID(userId),
+//                 name:name,
+//             });
+//         }
+//         return {success:true};
+//     } catch(error){
+//         console.error('Temp save error:',error);
+//         return {success:false, error};
+//     }
+// }
 
 async function saveProfile(userId, name, birth, categories, regions) {
     try {
@@ -16,6 +36,16 @@ async function saveProfile(userId, name, birth, categories, regions) {
             })
             .eq('id', userId);
 
+        const usersCollection = getCollection('users');
+        const mongoUser = await usersCollection.findOne({ _id: new UUID(userId) });
+
+        if (!mongoUser) {
+            await usersCollection.insertOne({
+                _id: new UUID(userId),
+                name: name,
+            });
+        }
+        
         if (error) {
             console.error('Save profile error:', error);
             return { success: false, error };

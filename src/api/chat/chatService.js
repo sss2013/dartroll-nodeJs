@@ -1,4 +1,4 @@
-const {getCollection} = require('../../config/mongoClient');
+const { MongoClient, getCollection } = require('../../config/mongoClient');
 const {ObjectId} = require('mongodb');
 
 async function findOrCreateRoom(userIds){
@@ -13,7 +13,8 @@ async function findOrCreateRoom(userIds){
     const newRoom = {
         participants: userIds,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        lastMessage : null
     };
 
     const result = await rooms.insertOne(newRoom);
