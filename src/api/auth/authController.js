@@ -3,6 +3,12 @@ const router = express.Router();
 const authService = require('./authService');
 const axios = require('axios');
 
+const bodyParser = require('body-parser');
+router.use(bodyParser.json());
+
+const TOKEN_URL = 'https://nid.naver.com/oauth2.0/token';
+const USERINFO_URL = 'https://openapi.naver.com/v1/nid/me';
+
 //앱에서 필요한 환경변수 전달
 router.get('/config', (req, res) => {
     res.json({
@@ -74,6 +80,53 @@ router.get('/api/auth/kakao/callback', async (req,res)=> {
         res.redirect(`${front_url}/#/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}&accessExpiresAt=${encodedExpiresAt}`);
     } catch(err){
         console.error('Kakao web callback error:', err.response ? err.response.data : err.message);
+        return res.redirect(`${front_url}/login-failed?error=server_error`);
+    }
+});  
+
+router.get('/api/auth/naver/callback', async (req,res)=> {
+    const front_url = process.env.FRONT_END_URL;
+    console.log(front_url);
+
+    const { code, state} = req.query;
+    if (!code) return res.redirect(`${front_url}/login-failed?error=missing_code`);
+
+    console.log('Naver callback code:', code);
+    const NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID;
+    const NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET;
+
+    try{
+        const tokenResponse = await axios.get(
+            TOKEN_URL, 
+            {
+                // headers: { 'Content-type': 'application/x-www-form-urlencoded;charset=utf-8' },
+                params: {
+                    grant_type: 'authorization_code',
+                    client_id: NAVER_CLIENT_ID,
+                    client_secret: NAVER_CLIENT_SECRET,
+                    code,
+                    state
+                },
+            }
+        );
+        console.log('Naver token response data ok');
+        
+        const { access_token, refresh } = tokenResponse.data;
+
+        const serverTokens = await authService.exchangeSocialToken('Naver', access_token);
+        if (serverTokens.error) {
+            // authService에서 에러가 발생한 경우
+            return res.redirect(`${front_url}/#/login-failed?error=${serverTokens.error}`);
+        }
+        const accessToken = serverTokens.access.token;
+        const accessTokenExpiresIn = serverTokens.access.expiresAt;
+        const refreshToken = serverTokens.refresh.token;
+        
+        const encodedExpiresAt = encodeURIComponent(accessTokenExpiresIn);
+
+        res.redirect(`${front_url}/#/login-success?accessToken=${accessToken}&refreshToken=${refreshToken}&accessExpiresAt=${encodedExpiresAt}`);
+    } catch(err){
+        console.error('Naver web callback error:', err.response ? err.response.data : err.message);
         return res.redirect(`${front_url}/login-failed?error=server_error`);
     }
 });  

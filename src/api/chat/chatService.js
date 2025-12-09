@@ -1,17 +1,17 @@
 const { MongoClient, getCollection } = require('../../config/mongoClient');
 const {ObjectId} = require('mongodb');
 
-async function findOrCreateRoom(userIds){
+async function findOrCreateRoom(userNames){
     const rooms = getCollection('rooms');
 
-    const existingRoom = await rooms.findOne({ participants: { $all: userIds, $size: userIds.length } });
+    const existingRoom = await rooms.findOne({ participants: { $all: userNames, $size: userNames.length } });
 
     if (existingRoom) {
         return existingRoom;
     }
 
     const newRoom = {
-        participants: userIds,
+        participants: userNames,
         createdAt: new Date(),
         updatedAt: new Date(),
         lastMessage : null

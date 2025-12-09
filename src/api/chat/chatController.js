@@ -2,16 +2,20 @@ const chatService = require('./chatService');
 const express = require('express');
 const router = express.Router();
 const authenticateToken = require('../../middleware/authenticateToken');
+const userService = require('../user/userService');
 
 //특정 사용자와의 채팅방 생성 또는 기존 채팅방 조회
-router.post('/',authenticateToken, async (req, res,next) => {
+router.post('/',authenticateToken, async (req, res, next) => {
     try{
-        const currentUserId = req.user.id;
-        const {otherUserId} = req.body;
-        if (!otherUserId) {
+        const currentUserName = userService.loadUserData(req.user.id, 'name').then(data => data.name);
+
+        const {otherName} = req.body;
+
+        if (!otherName) {
             return res.status(400).json({ error: '상대방 아이디가 필요합니다.' });
         }  
-        const room = await chatService.findOrCreateRoom([currentUserId, otherUserId]);
+
+        const room = await chatService.findOrCreateRoom([currentUserName, otherName]);
         return res.status(200).json(room);
     } catch(error){
         console.error(error);
