@@ -3,6 +3,7 @@ const { ObjectId } = require('mongodb');
 const { MongoClient, getCollection } = require('../../config/mongoClient');
 const { updateLocale } = require('moment');
 const dayjs = require('dayjs');
+const { UUID } = require("bson");
 
 // 각 함수는 예외를 던지므로 호출에서 try-catch로 처리해야 합니다.
 // DB의 review 테이블(컬렉션) 참조하는 함수
@@ -15,6 +16,9 @@ function _matching() {
 }
 function _comment() {
     return getCollection('comment');
+}
+function _users(){ 
+    getCollection('users');
 }
 function selectCollection(tap) {
     try {
@@ -48,19 +52,49 @@ async function createPost(payload, tap) {
 }
 //전체 검색 페이징 get요청{page, limit} 
 async function getPost(payload, tap) {
+    const usersCollection = getCollection('users');
     const page = parseInt(payload["page"]) || 1;
     const limit = parseInt(payload["limit"]) || 10;
     const skip = (page - 1) * limit;
-    const result = await selectCollection(tap).find().skip(skip).limit(limit).toArray(); //최신순으로 바꾸려고 했지만 오류
-    return result;
+    const result = await selectCollection(tap).find().skip(skip).limit(limit).toArray();
+    const safeResult = result.map(({...rest }) => ({...rest,likeCount: rest.like?.length ?? 0,
+        reportedCount: rest.report?.length ?? 0}));
+    const userIds = [...new Set(result.map(c => c.userId).filter(Boolean))];
+    const uuidIds = userIds.map(userId => new UUID(userId))
+    const users = await usersCollection.find({ _id: { $in: uuidIds } }).project({ _id: 1, name: 1 }).toArray();
+    const nicknameMap = new Map(users.map(u => [u._id.toString(), u.name]));
+    const postsWithNickname = safeResult.map(c => ({
+    ...c,
+    authorNickname: nicknameMap.get(c.userId) || null
+    }));
+    const final = postsWithNickname.map(({like, report, ...rest }) => rest);
+    return final;
 }
 //하나만 가져오기
 async function getOne(payload, tap) {
-    const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload.postId) });
-    return post;
+    const usersCollection = getCollection('users');
+    const result = await selectCollection(tap).findOne({ _id: new ObjectId(payload.postId) });
+    if (!result) throw new Error("Post not found");
+    const { like, report,...safePost } = result;//userId 추가 시 userId가 안나타남
+    const postAuthorId = result.userId; 
+    const uuid = new UUID(postAuthorId);
+    const users = await usersCollection
+        .find({ _id: uuid })
+        .project({ _id: 1, name: 1 })
+        .toArray();
+    const user = users[0];
+    const authorNickname = user ? user.name : null;
+    const postWithNickname = {
+        ...safePost,
+        authorNickname,
+        likeCount:result.like?.length ?? 0,
+        reportedCount:result.report?.length ?? 0
+    };
+    return postWithNickname;
 }
 //장르, 지역별 get요청 {page, limit,area, genre}
 async function getFilteredPost(payload, tap) {
+    const usersCollection = getCollection('users');
     const page = parseInt(payload["page"]) || 1;
     const limit = parseInt(payload["limit"]) || 10;
     const skip = (page - 1) * limit;
@@ -74,10 +108,19 @@ async function getFilteredPost(payload, tap) {
         query.genre = genre;
     }
     const result = await selectCollection(tap).find(query).skip(skip).limit(limit).toArray();
-    return result;
+    const safeResult = result.map(({...rest }) => ({...rest,likeCount: rest.like?.length ?? 0,
+        reportedCount: rest.report?.length ?? 0}));
+    const userIds = [...new Set(result.map(c => c.userId).filter(Boolean))];
+    const uuidIds = userIds.map(userId => new UUID(userId))
+    const users = await usersCollection.find({ _id: { $in: uuidIds } }).project({ _id: 1, name: 1 }).toArray();
+    const nicknameMap = new Map(users.map(u => [u._id.toString(), u.name]));
+    const postsWithNickname = safeResult.map(c => ({
+    ...c,
+    authorNickname: nicknameMap.get(c.userId) || null
+    }));
+    const final = postsWithNickname.map(({like, report,...rest }) => rest);
+    return final
 }
-    
-
 //글 삭제 id userId, tap
 async function deletePost(payload,tap) {
     const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload.id) });
@@ -89,9 +132,8 @@ async function deletePost(payload,tap) {
     const result = await selectCollection(tap).deleteOne({ _id: new ObjectId(payload.id) });
     //관련댓글 삭제
     // const comment = await _comment().deleteMany({ postId: new ObjectId(payload.id) });
-    return { result };
+    return { success: true };
 }
-
 //글 수정 id userId,tap
 async function modifyPost(payload,tap) {
     const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload.id) });
@@ -103,7 +145,6 @@ async function modifyPost(payload,tap) {
     const result = await selectCollection(tap).updateOne({ _id: post._id },{ $set: { content: payload.content,updatedAt: new Date()} });
     return { success: true };
 }
-
 //조회수 증가
 async function updateView(postId,tap) {//{글의 id}  views++
     const id = new ObjectId(postId)
@@ -129,15 +170,15 @@ async function likePost(payload,tap) {
 }
 //게시글 신고
 async function reportPost(payload,tap) {//{글의 id}
-    let reported = false
-    const id = new ObjectId(payload.postId)
+    let reported = false;
+    const id = new ObjectId(payload.postId);
     const post = await selectCollection(tap).findOne({ _id: id});
     if(post.report.includes(payload.userId)){
-        reported = false
+        reported = false;
     }
     else{
         await selectCollection(tap).updateOne({ _id:id },{ $push: { report: payload.userId } });
-        reported = true
+        reported = true;
     }  
     const result = await selectCollection(tap).findOne({ _id: id});
     return {reported,reportedCount:result.report?.length??0};
@@ -153,7 +194,7 @@ async function createComment(payload) {//postId, userId, text, parentId,isDelete
         updatedAt: new Date(),
     }
     result = await _comment().insertOne(doc);
-    return result;
+    return {success: true};
 }
 //댓글 삭제
 async function deleteComment(payload) { //댓글 _id, userId,
@@ -174,8 +215,13 @@ async function deleteComment(payload) { //댓글 _id, userId,
 //댓글 좋아요
 async function likeComment(payload) {
     let liked = false;
-    const id = new ObjectId(payload.commentId)
+    const id = new ObjectId(payload.commentId);
     const comment = await _comment().findOne({ _id: id});
+    if (!comment) {
+        const err = new Error("Not Found");
+        err.status = 404;
+        throw err;
+    }
     if(comment.like.includes(payload.userId)){
         await _comment().updateOne({ _id:id },{ $pull: { like: payload.userId } });
         liked = false;
@@ -189,25 +235,42 @@ async function likeComment(payload) {
 }
 //댓글 조회
 async function getComment(payload) {//postId postId는 ObjectId가 아님
+    const usersCollection = getCollection('users');
     const query = {};
     query.postId = payload.postId;
     const result = await _comment().find(query).toArray();
-    return result;
+    const safeResult = result.map(({...rest }) => ({...rest,likeCount: rest.like?.length ?? 0,
+        reportedCount: rest.report?.length ?? 0}));
+    const userIds = [...new Set(result.map(c => c.userId).filter(Boolean))];
+    const uuidIds = userIds.map(userId => new UUID(userId))
+    const users = await usersCollection.find({ _id: { $in: uuidIds } }).project({ _id: 1, name: 1 }).toArray();
+    const nicknameMap = new Map(users.map(u => [u._id.toString(), u.name]));
+    const commentsWithNickname = safeResult.map(c => ({
+    ...c,
+    authorNickname: nicknameMap.get(c.userId) || null
+    }));
+    const final = commentsWithNickname.map(({like, report,...rest }) => rest);
+    return final;
 }
 //댓글 신고
-async function reportComment(payload) {//{댓글 id} 
-    const id = new ObjectId(payload.commentId)
-    let reported = false
+async function reportComment(payload) {
+    let reported = false;
+    const id = new ObjectId(payload.commentId);
     const comment = await _comment().findOne({ _id: id});
+    if (!comment) {
+        const err = new Error("Not Found");
+        err.status = 404;
+        throw err;
+    }
     if(comment.report.includes(payload.userId)){
-        reported = false
+        reported = false;
     }
     else{
         await _comment().updateOne({ _id:id },{ $push: { report: payload.userId } });
-        reported = true
-    } 
+        reported = true;
+    }  
     const result = await _comment().findOne({ _id: id});
-    return {reported,reportedCount:result.report?.length??0}
+    return {reported,reportedCount:result.report?.length??0};
 }
 //댓글 수정 댓글id, userId, text
 async function modifyComment(payload) {
