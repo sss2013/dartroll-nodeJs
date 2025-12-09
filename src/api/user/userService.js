@@ -136,5 +136,7 @@ async function loadUserData(userId, fields) {
 
 module.exports = {
     saveProfile,
+    checkName,
+    changeName,
     loadUserData
 };
