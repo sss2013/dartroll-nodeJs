@@ -23,9 +23,19 @@ async function findOrCreateRoom(userNames){
 
 //특정 유저가 속한 채팅방들 조회
 async function getRoomsForUser(userName){
-    const rooms = getCollection('rooms');
-    return rooms.find({participants:userName}).sort({ updatedAt: -1 }).toArray();
-}
+    const roomsCollection = getCollection('rooms');
+    const rooms = await roomsCollection.find({ participants: userName }).sort({ updatedAt: -1 }).toArray();
+    
+    return rooms.map(room => {
+        const otherParticipants = room.participants.filter(name => name !== userName);
+        return {
+            ...room,
+            //타이틀이 없거나 ,생성된 타이틀을 덮어쓰고 싶을 때 앱에서 사용
+            title : otherParticipants.join(', ') || '나와의 채팅'
+        }
+    })
+}   
+
 
 async function saveMessage(roomId,senderName,content){
     const messages = getCollection('messages');
