@@ -7,7 +7,7 @@ const userService = require('../user/userService');
 //특정 사용자와의 채팅방 생성 또는 기존 채팅방 조회
 router.post('/',authenticateToken, async (req, res, next) => {
     try{
-        const currentUserName = await userService.loadUserData(req.user.id, 'name').then(data => data.name);
+        const currentUserName = await userService.loadUserData(req.user.id, 'name').then(data => data.data.name);
 
         const {otherName} = req.body;
 
