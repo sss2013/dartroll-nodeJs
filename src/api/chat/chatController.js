@@ -7,7 +7,7 @@ const userService = require('../user/userService');
 //특정 사용자와의 채팅방 생성 또는 기존 채팅방 조회
 router.post('/',authenticateToken, async (req, res, next) => {
     try{
-        const currentUserName = userService.loadUserData(req.user.id, 'name').then(data => data.name);
+        const currentUserName = await userService.loadUserData(req.user.id, 'name').then(data => data.name);
 
         const {otherName} = req.body;
 
@@ -27,8 +27,22 @@ router.post('/',authenticateToken, async (req, res, next) => {
 router.get('/', authenticateToken, async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const rooms = await chatService.getRoomsForUser(userId);
+        const userName = await userService.loadUserData(userId, 'name').then(data => data.name);
+        const rooms = await chatService.getRoomsForUser(userName);
         return res.status(200).json(rooms);
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.post('/saveMessage', authenticateToken, async (req, res, next) => {
+    try {
+        const { roomId, content } = req.body;
+        const userId = req.user.id;
+        const senderName = await userService.loadUserData(userId, 'name').then(data => data.name);
+
+        const message = await chatService.saveMessage(roomId, senderName, content);
+        return res.status(200).json(message);
     } catch (error) {
         next(error);
     }

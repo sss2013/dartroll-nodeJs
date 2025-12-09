@@ -22,18 +22,18 @@ async function findOrCreateRoom(userNames){
 }
 
 //특정 유저가 속한 채팅방들 조회
-async function getRoomsForUser(userId){
+async function getRoomsForUser(userName){
     const rooms = getCollection('rooms');
-    return rooms.find({participants:userId}).sort({ updatedAt: -1 }).toArray();
+    return rooms.find({participants:userName}).sort({ updatedAt: -1 }).toArray();
 }
 
-async function saveMessage(roomId,senderId,content){
+async function saveMessage(roomId,senderName,content){
     const messages = getCollection('messages');
     const rooms = getCollection('rooms');
 
     const newMessage = {
         roomId: new ObjectId(roomId),
-        senderId: senderId,
+        senderName: senderName,
         content: content,
         timestamp: new Date()
     };

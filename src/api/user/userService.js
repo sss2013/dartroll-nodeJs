@@ -115,6 +115,7 @@ async function loadUserData(userId, fields) {
                 selectFields = '*';
                 break;
         }
+        
         const { data, error } = await supabase
             .from('users')
             .select(selectFields)
