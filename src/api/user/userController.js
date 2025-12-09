@@ -24,6 +24,44 @@ router.post('/api/user/saveProfile', authenticateToken, async (req, res) => {
     }
 });
 
+router.get('/api/user/checkName', async (req, res) => {
+    const { name } = req.query;
+    if (!name) return res.status(400).json({ error: 'missing name parameter' });
+
+    try {
+        const result = await userService.checkName(name);
+        if (!result.success) {
+            console.log('Check name failed:', result.error);
+            return res.status(500).json({ result : false });
+        }
+        return res.status(200).json({ exists: result.exists });
+    } catch(err){
+        console.error('Check name error:', err);
+        return res.status(500).json({ result : false });
+    }   
+});
+
+router.post('/api/user/changeName', authenticateToken, async (req, res) => {
+    const { newName } = req.body;
+    const user = req.user;
+
+    if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+
+    if (!newName) return res.status(400).json({ error: 'missing newName parameter' });
+
+    try {
+        const result = await userService.changeName(user.id, newName);
+        if (!result.success) {
+            console.log('Change name failed:', result.error);
+            return res.status(500).json({ result : false } );
+        }
+        return res.status(200).json({ result : result.success });
+    } catch (err) {
+        console.error('Change name error:', err);
+        return res.status(500).json({ result : false });
+    }
+});
+
 router.get('/api/user/loadUserId', authenticateToken, async (req, res) => {
     const user = req.user;
 

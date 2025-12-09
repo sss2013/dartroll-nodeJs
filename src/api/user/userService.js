@@ -22,6 +22,52 @@ const { UUID } = require("bson");
 //     }
 // }
 
+async function checkName(name){
+    try{
+        const { data,error} = await supabase
+            .from('users')
+            .select('id')
+            .eq('name',name);
+
+        if(error){
+            console.error('Check name error:',error);
+            return {success:false, error};
+        }
+        if(data.length >0){
+            return {success:true, exists:true};
+        } else {
+            return {success:true, exists:false};
+        } 
+    } catch(err){
+        console.error('Check name exception:',err);
+        return {success:false, error:err};
+    }
+}
+
+async function changeName(userId, newName){
+    try {
+        const { error } = await supabase
+            .from('users')
+            .update({ name: newName })
+            .eq('id', userId);
+        
+        if (error) {
+            console.error('Change name error:', error);
+            return { success: false, error };
+        }
+
+        const usersCollection = getCollection('users');
+        await usersCollection.updateOne(
+            { _id: new UUID(userId) },
+            { $set: { name: newName } }
+        );
+        return { success: true };
+    } catch(err){
+        console.error('Change name exception:', err);
+        return { success: false, error: err };
+    }
+}
+
 async function saveProfile(userId, name, birth, categories, regions) {
     try {
         const { error } = await supabase
