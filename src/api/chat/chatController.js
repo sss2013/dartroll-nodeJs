@@ -27,7 +27,7 @@ router.post('/',authenticateToken, async (req, res, next) => {
 router.get('/', authenticateToken, async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const userName = await userService.loadUserData(userId, 'name').then(data => data.name);
+        const userName = await userService.loadUserData(userId, 'name').then(data => data.data.name);
         const rooms = await chatService.getRoomsForUser(userName);
         return res.status(200).json(rooms);
     } catch (error) {
@@ -39,7 +39,7 @@ router.post('/saveMessage', authenticateToken, async (req, res, next) => {
     try {
         const { roomId, content } = req.body;
         const userId = req.user.id;
-        const senderName = await userService.loadUserData(userId, 'name').then(data => data.name);
+        const senderName = await userService.loadUserData(userId, 'name').then(data => data.data.name);
 
         const message = await chatService.saveMessage(roomId, senderName, content);
         return res.status(200).json(message);
