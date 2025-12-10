@@ -14,7 +14,7 @@ module.exports = (io) => {
         socket.on('sendMessage', async (data) => {
             // data: { roomId: '...', message: '...', sender: '...' }
             try {
-                const savedMessage = await chatService.saveMessage(data.roomId, data.senderId, data.content);
+                const savedMessage = await chatService.saveMessage(data.roomId, data.senderName, data.content);
                 io.to(data.roomId).emit('receiveMessage', savedMessage);
             } catch (error) {
                 console.error('Error saving or emitting message:', error);

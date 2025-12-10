@@ -42,6 +42,7 @@ router.post('/saveMessage', authenticateToken, async (req, res, next) => {
         const senderName = await userService.loadUserData(userId, 'name').then(data => data.data.name);
 
         const message = await chatService.saveMessage(roomId, senderName, content);
+        req.io.to(roomId).emit('receiveMessage', message);
         return res.status(200).json(message);
     } catch (error) {
         next(error);
