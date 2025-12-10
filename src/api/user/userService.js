@@ -136,7 +136,15 @@ async function loadUserData(userId, fields) {
 
 async function deleteUser(userId) {
     try {
-        const { error } = await supabase
+        const userData = await loadUserData(userId, 'provider');
+        if (!userData.success) {
+            console.error('Failed to load user data for deletion:', userData.error);
+            return { success: false, error: 'Failed to load user data' };
+        }
+
+        const userNameToDelete = userData.data.name;
+
+        const { data,error } = await supabase
             .from('users')
             .delete()
             .eq('id', userId);
@@ -147,6 +155,22 @@ async function deleteUser(userId) {
 
         const usersCollection = getCollection('users');
         await usersCollection.deleteOne({ _id: new UUID(userId) });
+
+        const messageCollection = getCollection('messages');
+        await messageCollection.deleteMany({ senderName: userNameToDelete });
+
+        const reviewCollection = getCollection('review');
+        await reviewCollection.deleteMany({ userId: new UUID(userId) });
+
+        const matchingCollection = getCollection('matching');
+        await matchingCollection.deleteMany({ userId: new UUID(userId) });
+        
+        const roomsCollection = getCollection('rooms');
+        await roomsCollection.deleteMany(
+            { participants : userNameToDelete },
+            { $pull : { participants: userNameToDelete } }
+        );
+        
         return { success: true };
     } catch (err) {
         console.error('Delete user exception:', err);
