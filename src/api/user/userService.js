@@ -46,6 +46,14 @@ async function checkName(name){
 
 async function changeName(userId, newName){
     try {
+        const oldUserData = await loadUserData(userId, 'name');
+        if (!oldUserData.success) {
+            console.error('Failed to load old user data for name change:', oldUserData.error);
+            return { success: false, error: 'Failed to load old user data' };
+        }  
+
+        const oldName = oldUserData.data.name;
+
         const { error } = await supabase
             .from('users')
             .update({ name: newName })
@@ -61,6 +69,31 @@ async function changeName(userId, newName){
             { _id: new UUID(userId) },
             { $set: { name: newName } }
         );
+
+        const roomsCollection = getCollection('rooms');
+        await roomsCollection.updateMany(
+            { participants: { $elemMatch: { $eq: oldName } } },
+            { $set: { "participants.$": newName } }
+        );
+
+        const reviewCollection = getCollection('review');
+        await reviewCollection.updateMany(
+            { userId: userId },
+            { $set: { userName: newName } }
+        );
+
+        const matchingCollection = getCollection('matching');
+        await matchingCollection.updateMany(
+            { userId: userId },
+            { $set: { userName: newName } }
+        );
+
+        const messageCollection = getCollection('messages');
+        await messageCollection.updateMany(
+            { senderName: { $eq: oldName } },
+            { $set: { senderName: newName } }
+        );
+
         return { success: true };
     } catch(err){
         console.error('Change name exception:', err);
@@ -160,10 +193,10 @@ async function deleteUser(userId) {
         await messageCollection.deleteMany({ senderName: userNameToDelete });
 
         const reviewCollection = getCollection('review');
-        await reviewCollection.deleteMany({ userId: new UUID(userId) });
+        await reviewCollection.deleteMany({ userId: userId });
 
         const matchingCollection = getCollection('matching');
-        await matchingCollection.deleteMany({ userId: new UUID(userId) });
+        await matchingCollection.deleteMany({ userId: userId });
         
         const roomsCollection = getCollection('rooms');
         await roomsCollection.deleteMany(
