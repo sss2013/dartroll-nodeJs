@@ -39,13 +39,16 @@ function selectCollection(tap) {
 //likes, views 등 추가할수도? 논의 필요
 //views 및 userId 추가
 async function createPost(payload, tap) {
+    const now = new Date();
+    const kstOffset = 9 * 60; // 분 단위
+    const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
     const doc = {
         ...payload,
         views: 0,
         report:[],
         like:[],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: kstTime,
+        updatedAt: kstTime,
     }
     const result = await selectCollection(tap).insertOne(doc);
     return { id: result.insertedId };
@@ -88,7 +91,7 @@ async function getOne(payload, tap) {
         ...safePost,
         authorNickname,
         likeCount:result.like?.length ?? 0,
-        reportedCount:result.report?.length ?? 0
+        reportedCount:result.report?.length ?? 0////좋아요 누른 것을 반환하고 싶다면 토큰을 받고 result.like.includes(Id) 이런느낌으로 추가하면됨
     };
     return postWithNickname;
 }
@@ -118,7 +121,7 @@ async function getFilteredPost(payload, tap) {
     ...c,
     authorNickname: nicknameMap.get(c.userId) || null
     }));
-    const final = postsWithNickname.map(({like, report,...rest }) => rest);
+    const final = postsWithNickname.map(({like, report,...rest }) => rest);//좋아요 누른 것을 반환하고 싶다면 토큰을 받고 result.like.includes(Id) 이런느낌으로 추가하면됨
     return final
 }
 //글 삭제 id userId, tap
@@ -136,13 +139,16 @@ async function deletePost(payload,tap) {
 }
 //글 수정 id userId,tap
 async function modifyPost(payload,tap) {
+    const now = new Date();
+    const kstOffset = 9 * 60; // 분 단위
+    const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
     const post = await selectCollection(tap).findOne({ _id: new ObjectId(payload.id) });
     if(post.userId !== payload.userId){
         const err = new Error("Forbidden");
         err.status = 403;
         throw err;
     }
-    const result = await selectCollection(tap).updateOne({ _id: post._id },{ $set: { content: payload.content,updatedAt: new Date()} });
+    const result = await selectCollection(tap).updateOne({ _id: post._id },{ $set: { content: payload.content,updatedAt: kstTime} });
     return { success: true };
 }
 //조회수 증가
@@ -185,13 +191,16 @@ async function reportPost(payload,tap) {//{글의 id}
 }
 //댓글 생성
 async function createComment(payload) {//postId, userId, text, parentId,isDeleted
+    const now = new Date();
+    const kstOffset = 9 * 60; // 분 단위
+    const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
     const doc = {
         ...payload,
         isDeleted: false,
         report:[],
         like:[],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: kstTime,
+        updatedAt: kstTime,
     }
     result = await _comment().insertOne(doc);
     return {success: true};
