@@ -134,10 +134,31 @@ async function loadUserData(userId, fields) {
     }
 }
 
+async function deleteUser(userId) {
+    try {
+        const { error } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', userId);
+        if (error) {
+            console.error('Delete user error:', error);
+            return { success: false, error };
+        }
+
+        const usersCollection = getCollection('users');
+        await usersCollection.deleteOne({ _id: new UUID(userId) });
+        return { success: true };
+    } catch (err) {
+        console.error('Delete user exception:', err);
+        return { success: false, error: err };
+    }
+}
+
 
 module.exports = {
     saveProfile,
     checkName,
     changeName,
+    deleteUser,
     loadUserData
 };

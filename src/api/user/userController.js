@@ -94,5 +94,22 @@ router.get('/api/user/loadUserData', authenticateToken, async (req, res) => {
     }
 });
 
+router.post('/api/user/deleteUser', authenticateToken, async (req, res) => {
+    const user = req.user;
+    if (!user || !user.id) return res.status(401).json({ error: 'unauthorized' });
+
+    try {
+        const result = await userService.deleteUser(user.id);
+        if (!result.success) {
+            console.log('Delete user failed:', result.error);
+            return res.status(500).json({ error: 'Failed to delete user' });
+        }
+        return res.status(200).json({ message: 'User deleted successfully' });
+    } catch (err) {
+        console.error('Delete user error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 module.exports = router;
