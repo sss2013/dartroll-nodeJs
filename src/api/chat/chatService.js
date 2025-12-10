@@ -41,11 +41,16 @@ async function saveMessage(roomId,senderName,content){
     const messages = getCollection('messages');
     const rooms = getCollection('rooms');
 
+    const now = new Date();
+    
+    const kstOffset = 9 * 60 * 60 * 1000;
+    const kstDate = new Date(now.getTime() + kstOffset);
+
     const newMessage = {
         roomId: new ObjectId(roomId),
         senderName: senderName,
         content: content,
-        timestamp: new Date()
+        timestamp: kstDate
     };
 
     const result = await messages.insertOne(newMessage);
