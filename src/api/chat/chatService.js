@@ -69,7 +69,7 @@ async function saveMessage(roomId,senderName,content){
 }
 
 // 채팅방 과거 메시지 불러오기
-async function getMessagesForRoom(roomId, {page=0,limit=50}) {
+async function getMessagesForRoom(roomId, {page=0,limit=200}) {
     const messages = getCollection('messages');
     return messages
         .find({ roomId: new ObjectId(roomId) })

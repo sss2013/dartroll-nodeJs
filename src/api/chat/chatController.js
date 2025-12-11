@@ -54,7 +54,7 @@ router.get('/:roomId/messages', authenticateToken, async (req, res, next) => {
     try {
         const { roomId } = req.params;
         const page = parseInt(req.query.page || '0', 10);
-        const limit = parseInt(req.query.limit || '50', 10);
+        const limit = parseInt(req.query.limit || '200', 10);
 
         // TODO: 사용자가 이 채팅방의 참여자인지 확인하는 로직 추가
 
